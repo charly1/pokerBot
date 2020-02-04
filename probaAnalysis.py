@@ -68,13 +68,14 @@ def sortDeckHighCard(deck):
         
     
 def generateRandomCard(deck):
-    return deck[randrange(len(deck))]
+    card = deck[randrange(len(deck))]
+    deck = removeCardFromDeck(deck,card)
+    return card,deck
 
 def completeHandWithRandomcards(nbCardTotal,cardsTmp,deck):
     cards = copy.copy(cardsTmp)
     for i in range(nbCardTotal-len(cards)):
-        randCard = generateRandomCard(deck)
-        deck = removeCardFromDeck(deck,randCard)
+        randCard,deck = generateRandomCard(deck)
         cards.append(randCard)
     return cards,deck
 
@@ -282,14 +283,14 @@ def winnerTest(cardsJ1,cardsJ2,verbose=False):
     comboJ2,highCardJ2,handSelectedJ2 = getBestHand(cardsJ2)
     if verbose == True:
         print("J1:")
-        # printDeck(cardsJ1)
+        printDeck(cardsJ1)
         print("Combo:",comboJ1,"highCard:",highCardJ1)
-        printDeck(handSelectedJ1)
+        # printDeck(handSelectedJ1)
         print("")
         print("J2:")
-        # printDeck(cardsJ2)
+        printDeck(cardsJ2)
         print("Combo:",comboJ2,"highCard:",highCardJ2)
-        printDeck(handSelectedJ2)
+        # printDeck(handSelectedJ2)
         print("")
     order = ["none","pair","double pair","brelan","suite","color","full","carre","quinte flush"]
     idxJ1 = order.index(comboJ1)
@@ -353,12 +354,39 @@ def winnerTest(cardsJ1,cardsJ2,verbose=False):
     return playerWinnerId
     
 def decision(cardsJ1,cardsJ2,nbPlayer,nbRunToTest,aggresivity=0,verbose=False):
+    """
+    Parameters
+    ----------
+    cardsJ1 : list
+        Cards J1. e.g: ["6h","Kd"]
+    cardsJ2 : list
+        Cards J1.
+    nbPlayer : int
+        Number of player.
+    nbRunToTest : int
+        Number of simulation. The higher, the more accurate it is, but the more time it takes.
+    aggresivity : float between 0 and 1, optional
+        Define how aggressive is gonna be the algo. The default is 0.
+    verbose : bool, optional
+        Show more info. The default is False.
+
+    Returns
+    -------
+    decision : string
+        Return the action to do.
+
+    """
     nbCardTotal = 7
     
     nbWinJ1 = 0
     nbWinJ2 = 0
+    
+    deckInit = generateDeck()
+    deckInit = removeCardFromDeck(deckInit,cardsJ1)
+    deckInit = removeCardFromDeck(deckInit,cardsJ2)
+    
     for j in range(nbRunToTest):
-        deck = generateDeck()
+        deck = deckInit
         
         cardsJ1tmp,deck = completeHandWithRandomcards(nbCardTotal,cardsJ1,deck)
         cardsJ2tmp,deck = completeHandWithRandomcards(nbCardTotal,cardsJ2,deck)
@@ -368,9 +396,11 @@ def decision(cardsJ1,cardsJ2,nbPlayer,nbRunToTest,aggresivity=0,verbose=False):
             nbWinJ1 += 1
         elif playerWinnerId == 2:
             nbWinJ2 += 1
+        else:
+            pass
             
     chance = nbWinJ1/(nbWinJ1+nbWinJ2)
-    limitFollow = chance + (1-chance)*aggressivity
+    limitFollow = chance + (1-chance)*aggresivity
     limitNbPlayer = 1-1/nbPlayer
     
     if limitFollow > limitNbPlayer:
@@ -378,14 +408,17 @@ def decision(cardsJ1,cardsJ2,nbPlayer,nbRunToTest,aggresivity=0,verbose=False):
     else:
         decision = "quit"
     
-    print("nbWinJ1:",nbWinJ1)
-    print("nbWinJ2:",nbWinJ2)
-    print("Purcentage of chance of winning:",chance)
-    print("Limite Follow:",limitFollow)
-    print("Limite nb players:",limitNbPlayer)
-    print("Decision:",decision)
+    if verbose == True:
+        print("nbWinJ1:",nbWinJ1)
+        printDeck(cardsJ1)
+        print("nbWinJ2:",nbWinJ2)
+        printDeck(cardsJ2)
+        print("Purcentage of chance of winning:",chance)
+        print("Limite Follow:",limitFollow)
+        print("Limite nb players:",limitNbPlayer)
+        print("Decision:",decision)
         
-    return decision
+    return decision,chance,limitNbPlayer
 
     
 if __name__ == "__main__":
@@ -393,10 +426,10 @@ if __name__ == "__main__":
     
     nbPlayer = 3
     aggressivity = 0 #from 0 to 1
-    nbRunToTest = 1000
+    nbRunToTest = 10000
     
     cardsJ1 = genrateHandFromStrList(["6h","Kd"])
-    cardsJ2 = genrateHandFromStrList([])
+    cardsJ2 = genrateHandFromStrList(["4h","8d"])
 
     decision(cardsJ1,cardsJ2,nbPlayer,nbRunToTest,verbose=True)
 

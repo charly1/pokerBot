@@ -20,6 +20,10 @@ import scipy.cluster.hierarchy as hcluster
 from difflib import SequenceMatcher
 import click
 import time
+import re
+import imutils
+from PIL import Image
+
 """time_start = time.clock()
 time_elapsed = (time.clock() - time_start)"""
 
@@ -39,8 +43,8 @@ class Player():
         self.role = "player"
         self.cxB = int(self.cxT + (self.cxP-self.cxT)/100*66)       #coin bet position
         self.cyB = int(self.cyT + (self.cyP-self.cyT)/100*66)
-        self.deltaBx = 40
-        self.deltaBy = 20
+        self.deltaBx = 30
+        self.deltaBy = 30
         
     def showInfo(self):
         print("Player ",self.index," :")
@@ -71,7 +75,6 @@ def setNewDealer(listPlayer,index):
             listPlayer[i].setRole("dealer")
         else:
             listPlayer[i].setRole("player")
-        
         
 
 def findWindow(large_image,verbose=False):
@@ -121,8 +124,13 @@ def findWindow(large_image,verbose=False):
         MPy = 0
     return outputImg,MPx,MPy
 
+def getNbPlayerV2(window,template):
+    tmp = getLocTemplateInImage(window,template,threshold=0.95,grouping=True,verbose=False)
+    return len(tmp)
+
 def detectPlayers(window,verbose=False):
-    nbPlayer = getNbPlayer(window)
+    # nbPlayer = getNbPlayer(window)
+    
     # windowFiltered = filterColor(window,rgb=[255,255,255],delta=0)
     windowFiltered = filterColorV2(window,[0,0,255],[10,255,255])
     im = Image.fromarray(np.flip(windowFiltered,2))
@@ -132,6 +140,8 @@ def detectPlayers(window,verbose=False):
     deltaW = 20
     w, h = template.shape[:-1]
     h = h+2*deltaW
+    
+    nbPlayer = getNbPlayerV2(windowFiltered,template)
     
     res = cv2.matchTemplate(windowFiltered, template, cv2.TM_CCOEFF_NORMED)
     threshold = 0.97                     
@@ -145,15 +155,9 @@ def detectPlayers(window,verbose=False):
             # cv2.rectangle(window,  (pt[0], pt[1]), (pt[0] + h, pt[1] - w), (0, 100, 255), 2)
         showImg(cpWindow)
         showImg(windowFiltered)
-    
 
-    cxT = []
-    cyT = []
-    for pt in zip(*loc[::-1]):
-        cxT.append(pt[0]+h/2)
-        cyT.append(pt[1]+w/2)
-    cxT = np.mean(cxT)
-    cyT = np.mean(cyT)
+    cxT = 333
+    cyT = 237
         
     name,nbCoin = readNbPoints(window,loc,w,h)
     listPlayer = []
@@ -169,8 +173,8 @@ def detectPlayers(window,verbose=False):
         listPlayer[i].setIndex(i)
         
     readNbCoinTable(window,listPlayer)
-    
     return window,listPlayer
+
 
 def readNbCoinTable(window,listPlayer):
     for i in range(len(listPlayer)):
@@ -179,7 +183,15 @@ def readNbCoinTable(window,listPlayer):
         nbCoinT = pytesseract.image_to_string(imgTmp)
         if nbCoinT == '':
             nbCoinT = "0"
-        listPlayer[i].setNbCoinTable(int(nbCoinT))
+        # print(listPlayer[i].name)
+        # print(nbCoinT)
+        # showImg(imgTmp)
+        
+        if nbCoinT.isdigit():
+            listPlayer[i].setNbCoinTable(int(nbCoinT))
+        else:
+            listPlayer[i].setNbCoinTable(0)
+            print("Warning: during reading of coin table player ", listPlayer[i].name,", nb coin detected: ",nbCoinT)
     return listPlayer
 
 def readMyCards(window,listPlayer):
@@ -213,10 +225,10 @@ def readMyCards(window,listPlayer):
             
 def readCard(imgNumber,imgType,verbose=False):
     flagError = False
-    vectType = ["heart","diamond","spade","club"]
+    vectType = ["h","d","s","c"]
     vectVal = ['A','K','Q','J','10','9','8','7','6','5','4','3','2']
-    cardVal = pytesseract.image_to_string(imgNumber, config='--psm 7')
-    if cardVal == "O":
+    cardVal = pytesseract.image_to_string(imgNumber,lang='eng', config='--psm 10')
+    if cardVal == "O" or cardVal == "QO":
         cardVal = "Q"
     threshold = 0.8
     loc = getLocTemplateInImage(imgType,cv2.imread("img/hearthH.png"),grouping=False,threshold=threshold)
@@ -295,15 +307,20 @@ def readNbPoints(window,loc,w,h):
         nameTmp = pytesseract.image_to_string(imgTmpName, config='--psm 7')
         similarityPlayerName.append(SequenceMatcher(None, glbPlayerName, nameTmp).ratio())
         name.append(nameTmp)
-        imgTmpNbCoin = filterColor(imgTmp,rgb=[255,204,98],delta=40)
-        nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin, config='--psm 7')
-        if nbCoinTmp == "Oo" or nbCoinTmp == "an":
-            nbCoinTmp = "0"
-
-        if nbCoinTmp != '':
-            nbCoin.append(int(nbCoinTmp.replace(' ','')))
+        imgTmpNbCoin = filterColor(imgTmp,rgb=[255,204,98],delta=50)
+        # nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin, config='--psm 7', lang='eng')
+        
+        nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin,config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
+        
+        nbCoinTmp = nbCoinTmp.replace(' ','')
+        if nbCoinTmp.isdigit():
+            nbCoinIntVect = re.findall(r'\d+',nbCoinTmp)[0]
         else:
-            nbCoin.append(0)
+            nbCoinIntVect = 0
+            print("Warning: during reading of nb point player. nb point detected: ",nbCoinTmp)
+        
+        nbCoin.append(int(nbCoinIntVect))
+
     argmax = np.argmax(similarityPlayerName)
     name[argmax] = glbPlayerName
     
@@ -385,6 +402,7 @@ def getNbPlayer(window):
     
     return int(text[tmp1+1:tmp1+2])
     
+    
 def getOrderPlayers(loc,tableCenter):
     angle = []
     for pt in zip(*loc[::-1]):
@@ -404,20 +422,12 @@ def getDealerIndex(window,listPlayer):
     return np.argmin(dist)
 
 def isMyTurn(window):
-    small_image = cv2.imread("img/followF2.png")
-    loc = getLocTemplateInImage(window,small_image,threshold=0.99)
-    nb = loc.shape[0]
-    print(nb)
-    if nb == 1:
-        output = True
-        xOut = loc[0][1]+int(small_image.shape[1]/2)
-        yOut = loc[0][0]+int(small_image.shape[0]/2)
+    vectActOut,vectLocOut = detectPossibleActions(window)
+    if len(vectActOut) >= 1:
+        out = True
     else:
-        output = False
-        xOut = 0
-        yOut = 0
-    
-    return output,xOut,yOut
+        out = False
+    return out
 
 def printListPlayer(listPlayer):
     for i in range(len(listPlayer)):
@@ -462,9 +472,8 @@ def detectCards(window,verbose=False):
     cards = []
     for i in range(nbCardTable):
         imgTmp = window[loc[i,0]:loc[i,0]+wT,loc[i,1]:loc[i,1]+hT,:]
-        imgTmpVal = imgTmp[7:32,5:30,:]
+        imgTmpVal = filterColor(imgTmp[7:32,5:30,:],rgb=[0,0,0],delta=230)
         imgTmpFam = imgTmp[30:54,5:27,:]
-        # showImg(imgTmpFam)
         cards.append(readCard(imgTmpVal,imgTmpFam,verbose=False))
         
     if verbose == True:
@@ -473,15 +482,66 @@ def detectCards(window,verbose=False):
             cards[i].showCards()
         
     return cards
+
+def detectPossibleActions(window):
+    fileNames = ["img/actMiser.png","img/actParole.png","img/actPasser.png","img/actRelancer.png","img/actSuivre.png"]
+    actionList = ["miser","parole","passer","relancer","suivrve"]
+    vectActOut = []
+    vectLocOut = []
+    for i in range(len(fileNames)):
+        template = cv2.imread(fileNames[i])
+        tmp = getLocTemplateInImage(window,template,threshold=0.9,grouping=True,verbose=False)
+        # tmp = matchTemplateScaleMe(window,template)
+        if len(tmp) != 0:
+            vectActOut.append(actionList[i])
+            vectLocOut.append([tmp[0][0]+int(template.shape[0]/2),tmp[0][1]+int(template.shape[1]/2)])
+    return vectActOut,vectLocOut
+
+
+
+
+    
+# def matchTemplateScaleMe(window,template):
+#     # template = cv2.imread('template.jpg') # template image
+#     # window = cv2.imread('image.jpg') # image
+    
+#     template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+#     image = cv2.cvtColor(window, cv2.COLOR_BGR2GRAY)
+    
+#     loc = False
+#     threshold = 0.9
+#     w, h = template.shape[::-1]
+#     for scale in np.linspace(0.2, 1.0, 20)[::-1]:
+#         resized = imutils.resize(template, width = int(template.shape[1] * scale))
+#         w, h = resized.shape[::-1]
+#         res = cv2.matchTemplate(image,resized,cv2.TM_CCOEFF_NORMED)
+    
+#         loc = np.where( res >= threshold)
+#         if len(zip(*loc[::-1])) > 0:
+#             break
+    
+#     if loc and len(zip(*loc[::-1])) > 0:
+#         for pt in zip(*loc[::-1]):
+#             cv2.rectangle(window, pt, (pt[0] + w, pt[1] + h), (0,0,255), 2)
+    
+#     cv2.imshow('Matched Template', window)
+#     cv2.waitKey(0)
+#     cv2.destroyAllWindows()
+    
+#     return False
+
         
         
 if __name__ == "__main__":
     
     
     time_start = time.process_time()
-    screenshot = cv2.imread('img/actions.png')
+    screenshot = cv2.imread('img/last2.png')
     # screenshot = cv2.imread('img/actions.png')
     window,MPx,MPy = findWindow(screenshot,verbose=False)
+    
+    print(detectPossibleActions(window))
+    
     
     if window != []:
         windowDetectPlayers,listPlayer = detectPlayers(window,verbose=False)
@@ -502,7 +562,7 @@ if __name__ == "__main__":
         
         cards = detectCards(window,verbose=False)
         
-        flagMyTurn,_,_ = isMyTurn(window)
+        flagMyTurn = isMyTurn(window)
         
         time_elapsed = (time.process_time() - time_start)
     else:
