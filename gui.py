@@ -85,7 +85,7 @@ class AppPokerBot(tk.Frame):
         self.CBboolEnableBotPlay.pack()
         
         self.boolEnableLogScreenShot = tk.IntVar()
-        self.boolEnableLogScreenShot.set(True)
+        self.boolEnableLogScreenShot.set(False)
         self.CBboolEnableLogScreenShot = tk.Checkbutton(self.BoxCmd, text="Enable Log Screenshot", variable=self.boolEnableLogScreenShot)
         self.CBboolEnableLogScreenShot.pack()
         
@@ -294,7 +294,7 @@ class AppPokerBot(tk.Frame):
                 nbPlayer = len(listPlayer)
                 idxDealer = imgAn.getDealerIndex(self.window,listPlayer)
                 imgAn.setNewDealer(listPlayer,idxDealer)
-                myCards = imgAn.readMyCards(self.window,listPlayer)
+                myCards = imgAn.readMyCards(self.window,listPlayer,verbose=True)
                 cardsTable = imgAn.detectCards(self.window,verbose=False)
                 if len(cardsTable) == 0:
                     self.stateName = "begining"
@@ -326,45 +326,76 @@ class AppPokerBot(tk.Frame):
                     
                 if int(self.nbCardTable.get()) >= 1:
                     for i in range(int(self.nbCardTable.get())):
-                        tmp = cardsTable[i].val+cardsTable[i].fam
-                        vectCardsJ1.append(tmp)
-                        vectCardsJ2.append(tmp)
+                        if type(cardsTable[i]).__name__ != "list":
+                            tmp = cardsTable[i].val+cardsTable[i].fam
+                            vectCardsJ1.append(tmp)
+                            vectCardsJ2.append(tmp)
+                        else:
+                            print("Warning: one of the card on the table has been mis detected")
     
-                cardsJ1 = prbAn.genrateHandFromStrList(vectCardsJ1)
-                cardsJ2 = prbAn.genrateHandFromStrList(vectCardsJ2)
+                # cardsJ1 = prbAn.genrateHandFromStrList(vectCardsJ1)
+                # cardsJ2 = prbAn.genrateHandFromStrList(vectCardsJ2)
             
-                decision,chance,limitNbPlayer = prbAn.decision(cardsJ1,cardsJ2,nbPlayer,int(self.varSpinBoxNbRunSim.get()),verbose=True)
+                # decision,chance,limitNbPlayer = prbAn.decision(cardsJ1,cardsJ2,nbPlayer,int(self.varSpinBoxNbRunSim.get()),verbose=False)
+                
+                cardsJ1 = prbAn.genrateHandFromStrList(vectCardsJ1)
+                cardsOtherP = prbAn.genrateHandFromStrList(vectCardsJ2)
+                cardsAllP = [cardsJ1]
+                for i in range(nbPlayer-1):
+                    cardsAllP.append(cardsOtherP)
+                
+            
+                decision,chance,limitNbPlayer = prbAn.decision(cardsAllP,int(self.varSpinBoxNbRunSim.get()),verbose=True)
+                
                 self.valChanceOfWin.set(chance)
                 self.valAction.set(decision)
                 self.valLimitNbPlayer.set(limitNbPlayer)
                 
                 if self.boolEnableBotPlay.get() == True:
                     possibleActions,locActions = imgAn.detectPossibleActions(self.window)
-                    print("possibleActions:",possibleActions,locActions)
-                    if self.stateName == "begining":
-                        self.valAction.set("follow")
                     
-                    if self.valAction.get() == "quit":
-                        if "parole" in possibleActions:
-                            index = possibleActions.index("parole")
-                        elif "passer" in possibleActions:
-                            index = possibleActions.index("passer")
-                        else:
-                            print("Error: no action detected")
-                        clickY = locActions[index][0]
-                        clickX = locActions[index][1]
+                    if self.stateName == "begining" and chance > limitNbPlayer+0.1:
+                        decision = decision+["follow"]
 
-                    elif self.valAction.get() == "follow":
-                        if "parole" in possibleActions:
-                            index = possibleActions.index("parole")
-                        elif "suivrve" in possibleActions:
-                            index = possibleActions.index("suivrve")
-                        else:
-                            print("Error: no action detected",possibleActions)
-                        clickY = locActions[index][0]
-                        clickX = locActions[index][1]
+
+                    flagNoActionPossible = True
+                    for i in range(len(decision)):
+                        if decision[i] in possibleActions:
+                            finalDecision = decision[i]
+                            index = possibleActions.index(finalDecision)
+                            clickY = locActions[index][0]
+                            clickX = locActions[index][1]
+                            flagNoActionPossible = False
+                            break
+                        
+                    if flagNoActionPossible == False:
+                        self.valAction.set(finalDecision)
+                    else:
+                        print("Warning: No matching action possible. Possible action: ",possibleActions," Decisions: ",decision)
+                        
+                    # 
+                    # if self.valAction.get() == "quit":
+                    #     if "parole" in possibleActions:
+                    #         index = possibleActions.index("parole")
+                    #     elif "passer" in possibleActions:
+                    #         index = possibleActions.index("passer")
+                    #     else:
+                    #         print("Error: no action detected")
+                    #     clickY = locActions[index][0]
+                    #     clickX = locActions[index][1]
+
+                    # elif self.valAction.get() == "follow":
+                    #     if "parole" in possibleActions:
+                    #         index = possibleActions.index("parole")
+                    #     elif "suivre" in possibleActions:
+                    #         index = possibleActions.index("suivre")
+                    #     else:
+                    #         print("Error: no action detected",possibleActions)
+                    #     clickY = locActions[index][0]
+                    #     clickX = locActions[index][1]
+                        
                     pyautogui.click(self.MPx+clickX, self.MPy+clickY)
-                    pyautogui.move(self.MPx, self.MPy)
+                    pyautogui.moveTo(self.MPx+clickX, self.MPy+clickY+20)
             else:
                 self.boolTableDetected.set(False)
                 # print("Error: no poker window detected")

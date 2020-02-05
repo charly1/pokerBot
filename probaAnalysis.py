@@ -353,7 +353,7 @@ def winnerTest(cardsJ1,cardsJ2,verbose=False):
 
     return playerWinnerId
     
-def decision(cardsJ1,cardsJ2,nbPlayer,nbRunToTest,aggresivity=0,verbose=False):
+def decision(cardsAllP,nbRunToTest,aggresivity=0,verbose=False):
     """
     Parameters
     ----------
@@ -378,41 +378,57 @@ def decision(cardsJ1,cardsJ2,nbPlayer,nbRunToTest,aggresivity=0,verbose=False):
     """
     nbCardTotal = 7
     
+    nbPlayer = len(cardsAllP)
+    
     nbWinJ1 = 0
     nbWinJ2 = 0
     
+    nbWinP1 = 0
+    nbWinOtherP = 0
+    
     deckInit = generateDeck()
-    deckInit = removeCardFromDeck(deckInit,cardsJ1)
-    deckInit = removeCardFromDeck(deckInit,cardsJ2)
+    for i in range(nbPlayer):
+        deckInit = removeCardFromDeck(deckInit,cardsAllP[i])
     
     for j in range(nbRunToTest):
         deck = deckInit
         
-        cardsJ1tmp,deck = completeHandWithRandomcards(nbCardTotal,cardsJ1,deck)
-        cardsJ2tmp,deck = completeHandWithRandomcards(nbCardTotal,cardsJ2,deck)
+        cardsAllPcompleted = []
+        for i in range(nbPlayer):
+            cardsTmp,deck = completeHandWithRandomcards(nbCardTotal,cardsAllP[i],deck)
+            cardsAllPcompleted.append(cardsTmp)
         
-        playerWinnerId = winnerTest(cardsJ1tmp,cardsJ2tmp,verbose=False)
-        if playerWinnerId == 1:
-            nbWinJ1 += 1
-        elif playerWinnerId == 2:
-            nbWinJ2 += 1
+        idPlayerToTest = 0
+        flagP1win = True
+        for i in range(nbPlayer):
+            if i != idPlayerToTest:
+                playerWinnerId = winnerTest(cardsAllPcompleted[idPlayerToTest],cardsAllPcompleted[i],verbose=False)
+                if playerWinnerId == 2:
+                    flagP1win = False
+                    break
+        
+        if flagP1win == True:
+            nbWinP1 += 1
         else:
-            pass
-            
-    chance = nbWinJ1/(nbWinJ1+nbWinJ2)
+            nbWinOtherP += 1
+
+    chance = nbWinP1/(nbWinP1+nbWinOtherP)
     limitFollow = chance + (1-chance)*aggresivity
-    limitNbPlayer = 1-1/nbPlayer
+    limitNbPlayer = 1/nbPlayer
     
-    if limitFollow > limitNbPlayer:
-        decision = "follow"
+    if limitFollow > limitNbPlayer+0.4:
+        decision = ["raise","bet"]
+    if limitFollow > limitNbPlayer+0.2:
+        decision = ["bet","follow"]
+    elif limitFollow > limitNbPlayer:
+        decision = ["call","follow"]
     else:
-        decision = "quit"
+        decision = ["call","fold"]
     
     if verbose == True:
-        print("nbWinJ1:",nbWinJ1)
-        printDeck(cardsJ1)
-        print("nbWinJ2:",nbWinJ2)
-        printDeck(cardsJ2)
+        printDeck(cardsAllPcompleted[idPlayerToTest])
+        print("Nb win P1: ",nbWinP1)
+        print("Nb win others: ",nbWinOtherP)
         print("Purcentage of chance of winning:",chance)
         print("Limite Follow:",limitFollow)
         print("Limite nb players:",limitNbPlayer)
@@ -423,15 +439,20 @@ def decision(cardsJ1,cardsJ2,nbPlayer,nbRunToTest,aggresivity=0,verbose=False):
     
 if __name__ == "__main__":
     
+    nbPlayer = 5
     
-    nbPlayer = 3
     aggressivity = 0 #from 0 to 1
-    nbRunToTest = 10000
+    nbRunToTest = 5000
     
-    cardsJ1 = genrateHandFromStrList(["6h","Kd"])
-    cardsJ2 = genrateHandFromStrList(["4h","8d"])
+    commonHand = ["2h","Js","Jc"]
+    cardsJ1 = genrateHandFromStrList(["Qs","Qd"]+commonHand)
+    cardsJ2 = genrateHandFromStrList(commonHand)
+    cardsAllP = [cardsJ1]
+    for i in range(nbPlayer-1):
+        cardsAllP.append(cardsJ2)
+    
 
-    decision(cardsJ1,cardsJ2,nbPlayer,nbRunToTest,verbose=True)
+    decision(cardsAllP,nbRunToTest,verbose=True)
 
 
 

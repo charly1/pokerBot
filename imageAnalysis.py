@@ -9,7 +9,9 @@ Created on Sat Dec 28 00:38:00 2019
 import cv2
 import numpy as np
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+from sys import platform
+if platform == "win32":
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 # from PIL import Image
 from sklearn.cluster import KMeans
 import copy
@@ -175,6 +177,12 @@ def detectPlayers(window,verbose=False):
     readNbCoinTable(window,listPlayer)
     return window,listPlayer
 
+def isfloat(value):
+  try:
+    float(value)
+    return True
+  except ValueError:
+    return False
 
 def readNbCoinTable(window,listPlayer):
     for i in range(len(listPlayer)):
@@ -187,14 +195,14 @@ def readNbCoinTable(window,listPlayer):
         # print(nbCoinT)
         # showImg(imgTmp)
         
-        if nbCoinT.isdigit():
-            listPlayer[i].setNbCoinTable(int(nbCoinT))
+        if isfloat(nbCoinT):
+            listPlayer[i].setNbCoinTable(float(nbCoinT))
         else:
             listPlayer[i].setNbCoinTable(0)
             print("Warning: during reading of coin table player ", listPlayer[i].name,", nb coin detected: ",nbCoinT)
     return listPlayer
 
-def readMyCards(window,listPlayer):
+def readMyCards(window,listPlayer,verbose=False):
     flagPlayerNameDetected = False
     for i in range(len(listPlayer)):
         if listPlayer[i].name == glbPlayerName:
@@ -208,8 +216,8 @@ def readMyCards(window,listPlayer):
             imgType1 = window[y2:y3,x1:x2,:]
             imgNum2 = window[y1:y2,x2:x3,:]
             imgType2 = window[y2:y3,x2:x3,:]
-            card1 = readCard(imgNum1,imgType1,verbose=False)
-            card2 = readCard(imgNum2,imgType2,verbose=False)
+            card1 = readCard(imgNum1,imgType1,verbose=verbose)
+            card2 = readCard(imgNum2,imgType2,verbose=verbose)
             flagPlayerNameDetected = True
             
     if flagPlayerNameDetected == True:
@@ -485,7 +493,7 @@ def detectCards(window,verbose=False):
 
 def detectPossibleActions(window):
     fileNames = ["img/actMiser.png","img/actParole.png","img/actPasser.png","img/actRelancer.png","img/actSuivre.png"]
-    actionList = ["miser","parole","passer","relancer","suivrve"]
+    actionList = ["bet","call","fold","raise","follow"]
     vectActOut = []
     vectLocOut = []
     for i in range(len(fileNames)):
