@@ -9,7 +9,7 @@ Created on Sat Dec 28 00:38:00 2019
 import cv2
 import numpy as np
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"      
 # from PIL import Image
 from sklearn.cluster import KMeans
 import copy
@@ -23,6 +23,9 @@ import time
 import re
 import imutils
 from PIL import Image
+
+def OUT_OF_INDEX():
+    return 6
 
 """time_start = time.clock()
 time_elapsed = (time.clock() - time_start)"""

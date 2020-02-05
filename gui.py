@@ -351,8 +351,13 @@ class AppPokerBot(tk.Frame):
                             index = possibleActions.index("passer")
                         else:
                             print("Error: no action detected")
-                        clickY = locActions[index][0]
-                        clickX = locActions[index][1]
+                            index = imgAn.OUT_OF_INDEX()
+                        if index == imgAn.OUT_OF_INDEX():
+                            clickX = 0
+                            clickY = 0
+                        else:
+                            clickY = locActions[index][0]
+                            clickX = locActions[index][1]
 
                     elif self.valAction.get() == "follow":
                         if "parole" in possibleActions:
@@ -361,8 +366,13 @@ class AppPokerBot(tk.Frame):
                             index = possibleActions.index("suivrve")
                         else:
                             print("Error: no action detected",possibleActions)
-                        clickY = locActions[index][0]
-                        clickX = locActions[index][1]
+                            index = imgAn.OUT_OF_INDEX()
+                        if index == imgAn.OUT_OF_INDEX():
+                            clickX = 0
+                            clickY = 0
+                        else:
+                            clickY = locActions[index][0]
+                            clickX = locActions[index][1]
                     pyautogui.click(self.MPx+clickX, self.MPy+clickY)
                     pyautogui.move(self.MPx, self.MPy)
             else:
