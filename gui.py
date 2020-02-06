@@ -24,7 +24,8 @@ def saveArrayToPng(filename,array):
     
 def getDateAsString():
     return datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-    
+
+
 
 class AppPokerBot(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -155,7 +156,7 @@ class AppPokerBot(tk.Frame):
         
         self.BoxAroundTabPlayers = tk.LabelFrame(self.BoxInfoPlayer, text="", relief=tk.FLAT)
         self.BoxAroundTabPlayers.pack()
-        self.vectTitle = ["Name","Coin Hand","Coin Table","Dealer"]
+        self.vectTitle = ["Name","Coin Hand","Coin Table","Dealer","Action"]
         self.nbPerson = 10
         self.nbTitleInfoPlayer = len(self.vectTitle)
         self.tab = []
@@ -165,7 +166,7 @@ class AppPokerBot(tk.Frame):
                 if row == 0:
                     vect = self.vectTitle
                 else:
-                    vect = [" "," "," "," "]
+                    vect = [" "," "," "," "," "]
                 labelTmp = tk.Label(self.BoxAroundTabPlayers, text=vect[col], borderwidth=2, relief=tk.GROOVE,width=10)
                 tabTmp.append(labelTmp)
                 labelTmp.grid(row=row, column=col)
@@ -258,9 +259,9 @@ class AppPokerBot(tk.Frame):
                     isdealer = "x"
                 else:
                     isdealer = " "
-                vect = [listPlayer[i].name,listPlayer[i].nbCoinHand,listPlayer[i].nbCoinTable,isdealer]
+                vect = [listPlayer[i].name,listPlayer[i].nbCoinHand,listPlayer[i].nbCoinTable,isdealer,listPlayer[i].lastAction]
             else:
-                vect = [" "," "," "," "]
+                vect = [" "," "," "," "," "]
             for j in range(len(vect)):
                 self.tab[i+1][j].config(text=vect[j])
                 
@@ -338,22 +339,16 @@ class AppPokerBot(tk.Frame):
                 
                 self.boolTableDetected.set(True)
                 # imgAn.showImg(self.window)
-                windowDetectPlayers,listPlayer = imgAn.detectPlayers(self.window)
-                nbPlayer = len(listPlayer)
-                idxDealer = imgAn.getDealerIndex(self.window,listPlayer)
-                imgAn.setNewDealer(listPlayer,idxDealer)
-                myCards = imgAn.readMyCards(self.window,listPlayer,verbose=False)
                 cardsTable = imgAn.detectCards(self.window,verbose=False)
+                self.stateName = imgAn.getStateGame(len(cardsTable))
+                windowDetectPlayers,listPlayer = imgAn.detectPlayers(self.window,self.stateName)
+                nbPlayer = len(listPlayer)
+
+                myCards = imgAn.readMyCards(self.window,listPlayer,verbose=False)
+
                 valPot = imgAn.getPot(self.window,potTotal=False)
                 valPotTotal = imgAn.getPot(self.window,potTotal=True)
-                if len(cardsTable) == 0:
-                    self.stateName = "begining"
-                elif len(cardsTable) == 3:
-                    self.stateName = "flop"
-                elif len(cardsTable) == 4:
-                    self.stateName = "turn"
-                elif len(cardsTable) == 5:
-                    self.stateName = "river"
+
                 # for i in range(len(cardsTable))
                 self.nbPlayer.set(nbPlayer)
                 self.updateTabInfoPlayer(listPlayer)

@@ -53,6 +53,7 @@ class Player():
         self.cyB = int(self.cyT + (self.cyP-self.cyT)/100*66)
         self.deltaBx = 30
         self.deltaBy = 30
+        self.lastAction = ""
         
     def showInfo(self):
         print("Player ",self.index," :")
@@ -67,6 +68,9 @@ class Player():
         
     def setNbCoinTable(self,nbCoinTable):
         self.nbCoinTable = nbCoinTable
+        
+    def setLastAction(self,lastAction):
+        self.lastAction = lastAction
         
 class Card():
     def __init__(self,val,fam):
@@ -84,6 +88,7 @@ def setNewDealer(listPlayer,index):
             listPlayer[i].setRole("dealer")
         else:
             listPlayer[i].setRole("player")
+    return listPlayer
         
 
 def findWindow(large_image,verbose=False):
@@ -137,7 +142,7 @@ def getNbPlayerV2(window,template):
     tmp = getLocTemplateInImage(window,template,threshold=0.95,grouping=True,verbose=False)
     return len(tmp)
 
-def detectPlayers(window,verbose=False):
+def detectPlayers(window,stateGame,verbose=False):
     # nbPlayer = getNbPlayer(window)
     
     # windowFiltered = filterColor(window,rgb=[255,255,255],delta=0)
@@ -181,8 +186,31 @@ def detectPlayers(window,verbose=False):
     for i in range(len(listPlayer)):
         listPlayer[i].setIndex(i)
         
-    readNbCoinTable(window,listPlayer)
+    listPlayer = readNbCoinTable(window,listPlayer)
+    idxDealer = getDealerIndex(window,listPlayer)
+    listPlayer = setNewDealer(listPlayer,idxDealer)
+    listPlayer = guessLastActionsPlayers(listPlayer,stateGame)
     return window,listPlayer
+
+def guessLastActionsPlayers(listPlayer,stateGame):
+    for i in range(len(listPlayer)):
+        if listPlayer[i].role == "dealer":
+            index = i
+            break
+    print(index)
+    for i in range(len(listPlayer)):
+        deltaNbCoinTable = listPlayer[(i+index)%len(listPlayer)].nbCoinTable - listPlayer[(i-1+index)%len(listPlayer)].nbCoinTable
+        if stateGame == "begining" and (i == 1 or i==2):
+            actionTmp = "call"
+        else:
+            if deltaNbCoinTable > 0.0001:
+                actionTmp = "raised"
+            elif deltaNbCoinTable < -0.0001:
+                actionTmp = "fold"
+            else:
+                actionTmp = "call"
+        listPlayer[(i+index)%len(listPlayer)].setLastAction(actionTmp)
+    return listPlayer
 
 def isfloat(value):
   try:
@@ -199,7 +227,7 @@ def readNbCoinTable(window,listPlayer):
         imgTmp = cv2.erode(imgTmp, kernel, iterations=1) 
         showImg(imgTmp)
         # nbCoinT = pytesseract.image_to_string(imgTmp)
-        nbCoinT = pytesseract.image_to_string(imgTmp, config="-c tessedit_char_whitelist=:0123456789 --psm 6")
+        nbCoinT = pytesseract.image_to_string(imgTmp, config="-c tessedit_char_whitelist=:0123456789 --psm 7")
         if len(nbCoinT)>=2 and nbCoinT[0] == "0":
             nbCoinT= nbCoinT[0]+"."+nbCoinT[1:]
         if nbCoinT == '':
@@ -247,7 +275,13 @@ def readCard(imgNumber,imgType,verbose=False):
     vectVal = ['A','K','Q','J','10','9','8','7','6','5','4','3','2']
     
     #try to read value from card
-    cardVal = pytesseract.image_to_string(imgNumber,config='--psm 7')
+    cardValPsm7 = pytesseract.image_to_string(imgNumber,config='--psm 7')
+    cardValPsm8 = pytesseract.image_to_string(imgNumber,config='--psm 8')
+    if cardValPsm8 in vectVal:
+        cardVal = cardValPsm8
+    else:
+        cardVal = cardValPsm7
+    
     if cardVal in ["0","QO","O",")"]:
         cardVal = "Q"
     elif cardVal in ["Jy"]:
@@ -586,6 +620,17 @@ def getNbCoinFollow(window):
     else:
         nbCoin = 0
     return nbCoin
+
+def getStateGame(nbCardTable):
+    if nbCardTable == 0:
+        stateName = "begining"
+    elif nbCardTable == 3:
+        stateName = "flop"
+    elif nbCardTable == 4:
+        stateName = "turn"
+    elif nbCardTable == 5:
+        stateName = "river"
+    return stateName
     
         
 if __name__ == "__main__":
@@ -595,7 +640,7 @@ if __name__ == "__main__":
         listImgFileName = listdir_fullpath("log/img/")
         idImageInit = 5
     else:
-        listImgFileName = ['log/img/m125138_02062020.png']
+        listImgFileName = ['log/img/m200206_010442.png']
         idImageInit = 0
     
     
@@ -614,7 +659,14 @@ if __name__ == "__main__":
             print("nbCoinToFollow: ",getNbCoinFollow(window))
             print("Pot: ",getPot(window,potTotal=False))
             print("Pot total: ", getPot(window,potTotal=True))
-            windowDetectPlayers,listPlayer = detectPlayers(window,verbose=False)
+            
+            cards = detectCards(window,verbose=False)
+            stateGame = getStateGame(len(cards))
+            print("\nCards Table:")
+            for i in range(len(cards)):
+                cards[i].showCards()
+            
+            windowDetectPlayers,listPlayer = detectPlayers(window,stateGame,verbose=False)
             print("Number of players: ",len(listPlayer))
             
             idxDealer = getDealerIndex(window,listPlayer)
@@ -630,10 +682,7 @@ if __name__ == "__main__":
             else:
                 print("No card detected in your hand")
             
-            cards = detectCards(window,verbose=True)
-            print("\nCards Table:")
-            for i in range(len(cards)):
-                cards[i].showCards()
+
             
             
             flagMyTurn = isMyTurn(window)
