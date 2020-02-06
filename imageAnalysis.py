@@ -20,12 +20,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import scipy.cluster.hierarchy as hcluster
 from difflib import SequenceMatcher
-import click
 import time
-import re
-import imutils
-from PIL import Image
-from os import listdir
 import os
 
 def listdir_fullpath(d):
@@ -57,7 +52,7 @@ class Player():
         
     def showInfo(self):
         print("Player ",self.index," :")
-        print("Name:",self.name,",nbCoinHand:",self.nbCoinHand,",nbCoinTable:",self.nbCoinTable,",role:",self.role)
+        print("Name:",self.name,",nbCoinHand:",self.nbCoinHand,",nbCoinTable:",self.nbCoinTable,",role:",self.role,",lastAction:",self.lastAction)
         print("")
         
     def setIndex(self,index):
@@ -199,8 +194,12 @@ def guessLastActionsPlayers(listPlayer,stateGame):
             break
     print(index)
     for i in range(len(listPlayer)):
-        deltaNbCoinTable = listPlayer[(i+index)%len(listPlayer)].nbCoinTable - listPlayer[(i-1+index)%len(listPlayer)].nbCoinTable
-        if stateGame == "begining" and (i == 1 or i==2):
+        idxPlayer = (i+index)%len(listPlayer)
+        idxPlayerPrev = (i-1+index)%len(listPlayer)
+        deltaNbCoinTable = listPlayer[idxPlayer].nbCoinTable - listPlayer[idxPlayerPrev].nbCoinTable
+        if listPlayer[idxPlayer].name == glbPlayerName:
+            actionTmp == " "
+        elif stateGame == "begining" and (i == 1 or i==2):
             actionTmp = "call"
         else:
             if deltaNbCoinTable > 0.0001:
@@ -209,7 +208,7 @@ def guessLastActionsPlayers(listPlayer,stateGame):
                 actionTmp = "fold"
             else:
                 actionTmp = "call"
-        listPlayer[(i+index)%len(listPlayer)].setLastAction(actionTmp)
+        listPlayer[idxPlayer].setLastAction(actionTmp)
     return listPlayer
 
 def isfloat(value):
