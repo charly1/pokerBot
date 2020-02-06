@@ -15,10 +15,16 @@ import threading
 from PIL import Image
 import pyautogui
 import datetime
+from time import sleep
+
 
 def saveArrayToPng(filename,array):
     im = Image.fromarray(np.flip(array,axis=2))
     im.save(filename)
+    
+def getDateAsString():
+    return datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+    
 
 class AppPokerBot(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -61,14 +67,13 @@ class AppPokerBot(tk.Frame):
         if self.imgSource.get() == "Screen":
             self.entreeImgSource.config(state="disabled")
         
-        self.BoxSaveScreenShot = tk.LabelFrame(self.BoxCmd, text="Screenshot", padx=3, pady=3)
-        self.BoxSaveScreenShot.pack(fill="both", expand="yes")
-        self.boutonSaveScreenShot=tk.Button(self.BoxSaveScreenShot, text="Save", command=self.cbSaveScreenshot)
-        self.boutonSaveScreenShot.pack(padx=5, pady=5,side=tk.LEFT)
-        self.fileNameScreenshot = tk.StringVar() 
-        self.fileNameScreenshot.set("img/screenshot.png")
-        self.entreeImgScreenshot = tk.Entry(self.BoxSaveScreenShot, textvariable=self.fileNameScreenshot, width=20)
-        self.entreeImgScreenshot.pack(side=tk.RIGHT)
+        # self.BoxSaveScreenShot = tk.LabelFrame(self.BoxCmd, text="Screenshot", padx=3, pady=3)
+        # self.BoxSaveScreenShot.pack(fill="both", expand="yes")
+
+        # self.fileNameScreenshot = tk.StringVar() 
+        # self.fileNameScreenshot.set("img/screenshot.png")
+        # self.entreeImgScreenshot = tk.Entry(self.BoxSaveScreenShot, textvariable=self.fileNameScreenshot, width=20)
+        # self.entreeImgScreenshot.pack(side=tk.RIGHT)
         
         self.BoxRun = tk.LabelFrame(self.BoxCmd, text="Run", padx=3, pady=3)
         self.BoxRun.pack(fill="both", expand="yes")
@@ -84,10 +89,13 @@ class AppPokerBot(tk.Frame):
         self.CBboolEnableBotPlay = tk.Checkbutton(self.BoxCmd, text="Enable Bot Play", variable=self.boolEnableBotPlay)
         self.CBboolEnableBotPlay.pack()
         
+        self.boutonSaveScreenShot=tk.Button(self.BoxCmd, text="Save Screenshot", command=self.cbSaveScreenshot)
+        self.boutonSaveScreenShot.pack()
         self.boolEnableLogScreenShot = tk.IntVar()
         self.boolEnableLogScreenShot.set(False)
         self.CBboolEnableLogScreenShot = tk.Checkbutton(self.BoxCmd, text="Enable Log Screenshot", variable=self.boolEnableLogScreenShot)
         self.CBboolEnableLogScreenShot.pack()
+        
         
         
         self.BoxProba = tk.LabelFrame(self.BoxParams, text="Probability computation", padx=3, pady=3)
@@ -110,6 +118,12 @@ class AppPokerBot(tk.Frame):
         self.valChanceOfWin = tk.StringVar()
         self.entreeChanceOfWin = tk.Entry(self.BoxChanceOfWin, textvariable=self.valChanceOfWin, width=20,state="disabled")
         self.entreeChanceOfWin.pack()
+        
+        self.BoxBetMax = tk.LabelFrame(self.BoxProba, text="bet max", padx=3, pady=3)
+        self.BoxBetMax.pack(fill="both", expand="yes")
+        self.valBetMax = tk.StringVar()
+        self.entreeBetMax = tk.Entry(self.BoxBetMax, textvariable=self.valBetMax, width=20,state="disabled")
+        self.entreeBetMax.pack()
         
         self.BoxLimitNbPlayer = tk.LabelFrame(self.BoxProba, text="Limit", padx=3, pady=3)
         self.BoxLimitNbPlayer.pack(fill="both", expand="yes")
@@ -136,8 +150,8 @@ class AppPokerBot(tk.Frame):
         self.BoxNbPlayer.pack()
         self.nbPlayer = tk.StringVar()
         self.nbPlayer.set("")
-        self.LabelNbPlayer = tk.Label(self.BoxNbPlayer,textvariable = self.nbPlayer)
-        self.LabelNbPlayer.pack()
+        self.LabelNbPlayer = tk.Entry(self.BoxNbPlayer,textvariable = self.nbPlayer,width=10,state="disabled")
+        self.LabelNbPlayer.pack(padx=2,pady=2)
         
         self.BoxAroundTabPlayers = tk.LabelFrame(self.BoxInfoPlayer, text="", relief=tk.FLAT)
         self.BoxAroundTabPlayers.pack()
@@ -159,6 +173,24 @@ class AppPokerBot(tk.Frame):
             
         self.BoxInfoCards = tk.LabelFrame(self.BoxInfos, text="Info Cards:", padx=2, pady=2)
         self.BoxInfoCards.pack(side=tk.LEFT,fill=tk.BOTH)
+        
+
+        
+        self.BoxPotPotTotal = tk.LabelFrame(self.BoxInfoPlayer, text="", padx=2, pady=2,relief=tk.FLAT)
+        self.BoxPotPotTotal.pack()
+        self.BoxPot = tk.LabelFrame(self.BoxPotPotTotal, text="Pot", padx=2, pady=2)
+        self.BoxPot.pack(side=tk.LEFT)
+        self.valPot = tk.StringVar()
+        self.entreePot = tk.Entry(self.BoxPot, textvariable=self.valPot, width=10,state="disabled")
+        self.entreePot.pack(padx=2,pady=2)
+        
+        self.BoxPotTotal = tk.LabelFrame(self.BoxPotPotTotal, text="Pot Total", padx=2, pady=2)
+        self.BoxPotTotal.pack(side=tk.LEFT)
+        self.valPotTotal = tk.StringVar()
+        self.entreePotTotal = tk.Entry(self.BoxPotTotal, textvariable=self.valPotTotal, width=10,state="disabled")
+        self.entreePotTotal.pack(padx=2,pady=2)
+        
+
 
 
         self.nbCardsTable = 5
@@ -183,10 +215,10 @@ class AppPokerBot(tk.Frame):
             self.tabInfoMyHand.append(tabTmp)
         
         self.BoxNbCardTable = tk.LabelFrame(self.BoxInfoCards, text="Nb Card on Table:", padx=2, pady=2)
-        self.BoxNbCardTable.pack(fill=tk.BOTH)
+        self.BoxNbCardTable.pack()
         self.nbCardTable = tk.StringVar()
         self.nbCardTable.set("")
-        self.LabelNbCardTable = tk.Label(self.BoxNbCardTable,textvariable = self.nbCardTable)
+        self.LabelNbCardTable = tk.Entry(self.BoxNbCardTable,textvariable = self.nbCardTable,width=10,state="disabled")
         self.LabelNbCardTable.pack()
         
         self.BoxInfoCardsTable = tk.LabelFrame(self.BoxInfoCards, text="", relief=tk.FLAT)
@@ -205,8 +237,10 @@ class AppPokerBot(tk.Frame):
                     
 
     def cbSaveScreenshot(self):
-        im = Image.fromarray(np.flip(self.window,2))
-        im.save(self.fileNameScreenshot.get())
+        screenshot = np.array(pyautogui.screenshot())
+        screenshot = np.flip(screenshot,2)
+        fileName = getDateAsString()
+        saveArrayToPng("log/img/m"+fileName+".png",screenshot)
         
         
     def cbChangeImgSource(self,*args):
@@ -248,9 +282,23 @@ class AppPokerBot(tk.Frame):
             for j in range(len(vect)):
                 self.tabInfoMyHand[i+1][j].config(text=vect[j])
                 
+    def updatePot(self,valPot,valPotTotal):
+        self.valPot.set(valPot)
+        self.valPotTotal.set(valPotTotal)
+        
+                
     def cbStartBotBackGround(self):
         t = threading.Thread(target=self.cbStartBot)
         t.start()
+        
+    def getScreenShot(self):
+        if self.imgSource.get() == "Screen":
+            screenshot = np.array(pyautogui.screenshot())
+            screenshot = np.flip(screenshot,2)
+
+        elif self.imgSource.get() == "File":
+            screenshot = cv2.imread(self.fileNameImgSource.get())
+        return screenshot
     
     def cbStartBot(self):
         if self.toggleLoop.get() == True:
@@ -260,13 +308,8 @@ class AppPokerBot(tk.Frame):
             else:
                 self.boutonStartBot.config(text="Stop")
 
-        while True:
-            if self.imgSource.get() == "Screen":
-                screenshot = np.array(pyautogui.screenshot())
-                screenshot = np.flip(screenshot,2)
-    
-            elif self.imgSource.get() == "File":
-                screenshot = cv2.imread(self.fileNameImgSource.get())
+        while True:                
+            screenshot = self.getScreenShot()
 
             self.initData()
             self.updateData(screenshot)
@@ -288,14 +331,21 @@ class AppPokerBot(tk.Frame):
             flagMyTurn = imgAn.isMyTurn(self.window)
             self.boolIsMyTurn.set(flagMyTurn)
             if  self.boolIsMyTurn.get() == True:
+                #repeat the screenshot after a break, to avoid blur images
+                sleep(0.8)
+                screenshot = self.getScreenShot()
+                self.window,self.MPx,self.MPy = imgAn.findWindow(screenshot)
+                
                 self.boolTableDetected.set(True)
                 # imgAn.showImg(self.window)
                 windowDetectPlayers,listPlayer = imgAn.detectPlayers(self.window)
                 nbPlayer = len(listPlayer)
                 idxDealer = imgAn.getDealerIndex(self.window,listPlayer)
                 imgAn.setNewDealer(listPlayer,idxDealer)
-                myCards = imgAn.readMyCards(self.window,listPlayer,verbose=True)
+                myCards = imgAn.readMyCards(self.window,listPlayer,verbose=False)
                 cardsTable = imgAn.detectCards(self.window,verbose=False)
+                valPot = imgAn.getPot(self.window,potTotal=False)
+                valPotTotal = imgAn.getPot(self.window,potTotal=True)
                 if len(cardsTable) == 0:
                     self.stateName = "begining"
                 elif len(cardsTable) == 3:
@@ -309,14 +359,14 @@ class AppPokerBot(tk.Frame):
                 self.updateTabInfoPlayer(listPlayer)
                 self.nbCardTable.set(len(cardsTable))
                 self.updateTabInfoGame(cardsTable)
-                
+                self.updatePot(valPot,valPotTotal)
                 self.updateTabMyHand(myCards)
             
             
                 
                 if self.boolEnableLogScreenShot.get() == True:
-                    fileName = datetime.datetime.now().strftime("%I%M%S_%m%d%Y")
-                    saveArrayToPng("log/img/"+fileName+".png",screenshot)
+                    fileName = getDateAsString()
+                    saveArrayToPng("log/img/a"+fileName+".png",screenshot)
             
                 if len(myCards) == 2:
                     vectCardsJ1 = [myCards[0].val+myCards[0].fam,myCards[1].val+myCards[1].fam]
@@ -345,8 +395,14 @@ class AppPokerBot(tk.Frame):
                     cardsAllP.append(cardsOtherP)
                 
             
-                decision,chance,limitNbPlayer = prbAn.decision(cardsAllP,int(self.varSpinBoxNbRunSim.get()),verbose=True)
+                decision,chance,limitNbPlayer = prbAn.decision(cardsAllP,int(self.varSpinBoxNbRunSim.get()),verbose=False)
+                if valPotTotal == 0:
+                    valPotTotalTmp = valPot
+                else:
+                    valPotTotalTmp = valPotTotal
                 
+                betMax = chance*valPotTotalTmp/(1.000001-chance)
+                self.valBetMax.set(betMax)
                 self.valChanceOfWin.set(chance)
                 self.valAction.set(decision)
                 self.valLimitNbPlayer.set(limitNbPlayer)
@@ -372,27 +428,6 @@ class AppPokerBot(tk.Frame):
                         self.valAction.set(finalDecision)
                     else:
                         print("Warning: No matching action possible. Possible action: ",possibleActions," Decisions: ",decision)
-                        
-                    # 
-                    # if self.valAction.get() == "quit":
-                    #     if "parole" in possibleActions:
-                    #         index = possibleActions.index("parole")
-                    #     elif "passer" in possibleActions:
-                    #         index = possibleActions.index("passer")
-                    #     else:
-                    #         print("Error: no action detected")
-                    #     clickY = locActions[index][0]
-                    #     clickX = locActions[index][1]
-
-                    # elif self.valAction.get() == "follow":
-                    #     if "parole" in possibleActions:
-                    #         index = possibleActions.index("parole")
-                    #     elif "suivre" in possibleActions:
-                    #         index = possibleActions.index("suivre")
-                    #     else:
-                    #         print("Error: no action detected",possibleActions)
-                    #     clickY = locActions[index][0]
-                    #     clickX = locActions[index][1]
                         
                     pyautogui.click(self.MPx+clickX, self.MPy+clickY)
                     pyautogui.moveTo(self.MPx+clickX, self.MPy+clickY+20)

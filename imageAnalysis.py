@@ -25,6 +25,12 @@ import time
 import re
 import imutils
 from PIL import Image
+from os import listdir
+import os
+
+def listdir_fullpath(d):
+    return [os.path.join(d, f) for f in os.listdir(d)]
+
 
 """time_start = time.clock()
 time_elapsed = (time.clock() - time_start)"""
@@ -69,6 +75,7 @@ class Card():
         
     def showCards(self):
         print(self.val,self.fam)
+
         
         
 def setNewDealer(listPlayer,index):
@@ -188,13 +195,16 @@ def readNbCoinTable(window,listPlayer):
     for i in range(len(listPlayer)):
         imgTmp = window[listPlayer[i].cyB-listPlayer[i].deltaBy:listPlayer[i].cyB+listPlayer[i].deltaBy,listPlayer[i].cxB-listPlayer[i].deltaBx:listPlayer[i].cxB+listPlayer[i].deltaBx,:]
         imgTmp = filterColor(imgTmp,rgb=[239,192,1],delta=80)
-        nbCoinT = pytesseract.image_to_string(imgTmp)
+        kernel = np.ones((2,2), np.uint8) 
+        imgTmp = cv2.erode(imgTmp, kernel, iterations=1) 
+        showImg(imgTmp)
+        # nbCoinT = pytesseract.image_to_string(imgTmp)
+        nbCoinT = pytesseract.image_to_string(imgTmp, config="-c tessedit_char_whitelist=:0123456789 --psm 6")
+        if len(nbCoinT)>=2 and nbCoinT[0] == "0":
+            nbCoinT= nbCoinT[0]+"."+nbCoinT[1:]
         if nbCoinT == '':
             nbCoinT = "0"
-        # print(listPlayer[i].name)
-        # print(nbCoinT)
-        # showImg(imgTmp)
-        
+        nbCoinT = nbCoinT.replace(",",".")
         if isfloat(nbCoinT):
             listPlayer[i].setNbCoinTable(float(nbCoinT))
         else:
@@ -233,47 +243,55 @@ def readMyCards(window,listPlayer,verbose=False):
             
 def readCard(imgNumber,imgType,verbose=False):
     flagError = False
-    vectType = ["h","d","s","c"]
+    vectType = ["h","d","c","s"]
     vectVal = ['A','K','Q','J','10','9','8','7','6','5','4','3','2']
-    cardVal = pytesseract.image_to_string(imgNumber,lang='eng', config='--psm 10')
-    if cardVal == "O" or cardVal == "QO":
+    
+    #try to read value from card
+    cardVal = pytesseract.image_to_string(imgNumber,config='--psm 7')
+    if cardVal in ["0","QO","O",")"]:
         cardVal = "Q"
-    threshold = 0.8
-    loc = getLocTemplateInImage(imgType,cv2.imread("img/hearthH.png"),grouping=False,threshold=threshold)
-    nbHearth = loc.shape[0]
-    loc = getLocTemplateInImage(imgType,cv2.imread("img/carreauH.png"),grouping=False,threshold=threshold)
-    nbCarreau = loc.shape[0]
-    loc = getLocTemplateInImage(imgType,cv2.imread("img/piqueH.png"),grouping=False,threshold=threshold)
-    nbPique = loc.shape[0]
-    loc = getLocTemplateInImage(imgType,cv2.imread("img/trefleH.png"),grouping=False,threshold=threshold)
-    nbTrefle = loc.shape[0]
-    # print("nbHearth:",nbHearth," nbCarreau:",nbCarreau,"nbPique: ",nbPique,"nbTrefle:",nbTrefle)
-    vectNbType = np.array([nbHearth,nbCarreau,nbPique,nbTrefle])
-    total = np.sum(vectNbType)
-    argmax = np.argmax(vectNbType)
-    if total >= 1:
-        cardFam = vectType[argmax]
-    else:
-        flagError = True
-        cardFam = "none"
+    elif cardVal in ["Jy"]:
+        cardVal = "J"
+    elif cardVal in ["T"]:
+        cardVal = "7"
+    elif cardVal == "1":
+        cardVal = "A"
+    if not cardVal in vectVal:
+        print("Warning: wrong card value red: ",cardVal)
+        cardVal = "-1"
+        
+    #try to read family from card
+    threshold = 0.7
+    filtH = filterColor(imgType,rgb=[178, 7, 27],delta=10) #h
+    filtD = filterColor(imgType,rgb=[230, 45, 0],delta=10) #d
+    filtC = filterColor(imgType,rgb=[64, 64, 64],delta=10) #c
+    filtS = filterColor(imgType,rgb=[0, 0, 0],delta=10) #s
+    # showImg(filtH)
+    # showImg(filtD)
+    # showImg(filtC)
+    # showImg(filtS)
+    vectNbType = np.array([np.sum(filtH), np.sum(filtD), np.sum(filtC), np.sum(filtS)])
+
+    argmax = np.argmin(vectNbType)
+
+    cardFam = vectType[argmax]
+
     if not cardVal in vectVal:
         flagError = True
         
     if verbose == True and flagError == True:
         print("Error during card reading")
         
-    if flagError == True:
-        card = []
-    else:
-        card = Card(cardVal,cardFam)
+
+    card = Card(cardVal,cardFam)
 
     
     if verbose == True:
         print("cardVal: ",cardVal,", cardFam: ",cardFam)
         showImg(imgNumber)
         showImg(imgType)
-        print("nbHearth: ",nbHearth,", nbCarreau: ",nbCarreau,", nbPique:",nbPique,", nbTrefle: ",nbTrefle)
-        print("Char red: ",cardVal)
+        # print("nbHearth: ",nbHearth,", nbCarreau: ",nbCarreau,", nbPique:",nbPique,", nbTrefle: ",nbTrefle)
+        # print("Char red: ",cardVal)
 
     return card
     
@@ -318,16 +336,28 @@ def readNbPoints(window,loc,w,h):
         imgTmpNbCoin = filterColor(imgTmp,rgb=[255,204,98],delta=50)
         # nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin, config='--psm 7', lang='eng')
         
-        nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin,config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
+        nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin)
         
+        
+        if nbCoinTmp == '':
+            nbCoinTmp = "0"
+        
+
+        # if isfloat(nbCoinT):
+        #     listPlayer[i].setNbCoinTable(float(nbCoinT))
+        # else:
+        #     listPlayer[i].setNbCoinTable(0)
+    
         nbCoinTmp = nbCoinTmp.replace(' ','')
-        if nbCoinTmp.isdigit():
-            nbCoinIntVect = re.findall(r'\d+',nbCoinTmp)[0]
+        nbCoinTmp = nbCoinTmp.replace(",",".")
+        if isfloat(nbCoinTmp):
+            # nbCoinIntVect = re.findall(r'\d+',nbCoinTmp)[0]
+            nbCoinIntVect = float(nbCoinTmp)
         else:
             nbCoinIntVect = 0
             print("Warning: during reading of nb point player. nb point detected: ",nbCoinTmp)
         
-        nbCoin.append(int(nbCoinIntVect))
+        nbCoin.append(float(nbCoinIntVect))
 
     argmax = np.argmax(similarityPlayerName)
     name[argmax] = glbPlayerName
@@ -471,7 +501,7 @@ def detectCards(window,verbose=False):
     filtCard = filterColorV2(window,[50, 0, 0],[100, 240, 240],verbose=False)
     template = cv2.imread("img/blackCard.png")
     
-    loc = getLocTemplateInImage(filtCard,template,threshold=0.9,verbose=verbose)
+    loc = getLocTemplateInImage(filtCard,template,threshold=0.8,verbose=verbose)
     if len(loc.shape) == 2:
         newOrder = np.argsort(loc[:,1])
         loc = loc[newOrder]
@@ -480,9 +510,10 @@ def detectCards(window,verbose=False):
     cards = []
     for i in range(nbCardTable):
         imgTmp = window[loc[i,0]:loc[i,0]+wT,loc[i,1]:loc[i,1]+hT,:]
-        imgTmpVal = filterColor(imgTmp[7:32,5:30,:],rgb=[0,0,0],delta=230)
+        imgTmpVal = imgTmp[7:32,5:30,:]
+        # imgTmpVal = filterColor(imgTmpVal,rgb=[0,0,0],delta=230)
         imgTmpFam = imgTmp[30:54,5:27,:]
-        cards.append(readCard(imgTmpVal,imgTmpFam,verbose=False))
+        cards.append(readCard(imgTmpVal,imgTmpFam,verbose=verbose))
         
     if verbose == True:
         print("Number of card detected on the table: ",nbCardTable)
@@ -506,73 +537,111 @@ def detectPossibleActions(window):
     return vectActOut,vectLocOut
 
 
-
-
-    
-# def matchTemplateScaleMe(window,template):
-#     # template = cv2.imread('template.jpg') # template image
-#     # window = cv2.imread('image.jpg') # image
-    
-#     template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-#     image = cv2.cvtColor(window, cv2.COLOR_BGR2GRAY)
-    
-#     loc = False
-#     threshold = 0.9
-#     w, h = template.shape[::-1]
-#     for scale in np.linspace(0.2, 1.0, 20)[::-1]:
-#         resized = imutils.resize(template, width = int(template.shape[1] * scale))
-#         w, h = resized.shape[::-1]
-#         res = cv2.matchTemplate(image,resized,cv2.TM_CCOEFF_NORMED)
-    
-#         loc = np.where( res >= threshold)
-#         if len(zip(*loc[::-1])) > 0:
-#             break
-    
-#     if loc and len(zip(*loc[::-1])) > 0:
-#         for pt in zip(*loc[::-1]):
-#             cv2.rectangle(window, pt, (pt[0] + w, pt[1] + h), (0,0,255), 2)
-    
-#     cv2.imshow('Matched Template', window)
-#     cv2.waitKey(0)
-#     cv2.destroyAllWindows()
-    
-#     return False
-
+def getPot(window,potTotal=False):
+    if potTotal == True:
+        template = cv2.imread("img/potTotal.png")
+    else:
+        template = cv2.imread("img/pot.png")
+    loc = getLocTemplateInImage(window,template,threshold=0.95,grouping=True,verbose=False)
+    if len(loc) >= 1:
+        x = loc[0][0]-2
+        y = loc[0][1]+template.shape[1]
+        potImg = window[x:x+template.shape[0]+4,y:y+60,:]
+        if potTotal == True:
+            potImg = filterColor(potImg,rgb=[255,255,255],delta=120)
+        else:
+            potImg = filterColor(potImg,rgb=[239,192,1],delta=80)
+        kernel = np.ones((2,2), np.uint8) 
+        potImg = cv2.erode(potImg, kernel, iterations=1) 
+        nbCoinPot = pytesseract.image_to_string(potImg, config="-c tessedit_char_whitelist=.,0123456789 --psm 6")
         
+        
+        if len(nbCoinPot)>=2 and nbCoinPot[0] == "0" and nbCoinPot[1] != ".":
+            nbCoinPot= nbCoinPot[0]+"."+nbCoinPot[1:]
+        if nbCoinPot == '':
+            nbCoinPot = "0"
+        nbCoinPot = nbCoinPot.replace(",",".")
+        if isfloat(nbCoinPot):
+            nbCoinPot = float(nbCoinPot)
+        else:
+            nbCoinPot = 0
+    else:
+        nbCoinPot = 0
+    
+    return nbCoinPot
+
+def getNbCoinFollow(window):
+    template = cv2.imread("img/actSuivre.png")
+    loc = getLocTemplateInImage(window,template,threshold=0.9,grouping=True,verbose=False)
+    if len(loc) >= 1:
+        x = loc[0][0]-12
+        y = loc[0][1]
+        imgNbCoin = window[x:x+12,y:y+80,:]
+        imgNbCoin = filterColor(imgNbCoin,rgb=[255,255,255],delta=120)
+        showImg(imgNbCoin)
+        nbCoin = pytesseract.image_to_string(imgNbCoin, config="-c tessedit_char_whitelist=.,0123456789 --psm 6")
+        if nbCoin[-1] == ".":
+            nbCoin = nbCoin[0:-2]
+        nbCoin = float(nbCoin)
+    else:
+        nbCoin = 0
+    return nbCoin
+    
         
 if __name__ == "__main__":
+    testLogFiles = False
     
-    
-    time_start = time.process_time()
-    screenshot = cv2.imread('img/last2.png')
-    # screenshot = cv2.imread('img/actions.png')
-    window,MPx,MPy = findWindow(screenshot,verbose=False)
-    
-    print(detectPossibleActions(window))
-    
-    
-    if window != []:
-        windowDetectPlayers,listPlayer = detectPlayers(window,verbose=False)
-        print("Number of players: ",len(listPlayer))
-        
-        idxDealer = getDealerIndex(window,listPlayer)
-        setNewDealer(listPlayer,idxDealer)
-        
-        printListPlayer(listPlayer)
-        myCards = readMyCards(window,listPlayer)
-        print("My cards:")
-        
-        if myCards != []:
-            myCards[0].showCards()
-            myCards[1].showCards()
-        else:
-            print("No card detected in your hand")
-        
-        cards = detectCards(window,verbose=False)
-        
-        flagMyTurn = isMyTurn(window)
-        
-        time_elapsed = (time.process_time() - time_start)
+    if testLogFiles == True:
+        listImgFileName = listdir_fullpath("log/img/")
+        idImageInit = 5
     else:
-        raise Exception("Error: no poker window detected")
-    print("Time execution: ",time_elapsed)
+        listImgFileName = ['log/img/m125138_02062020.png']
+        idImageInit = 0
+    
+    
+    for j in range(idImageInit,len(listImgFileName)):
+        fileName = listImgFileName[j]
+        time_start = time.process_time()
+        screenshot = cv2.imread(fileName)
+        # screenshot = cv2.imread('img/actions.png')
+        window,MPx,MPy = findWindow(screenshot,verbose=False)
+        if testLogFiles == True:
+            print("\Analysis of the image no: ",j)
+        showImg(window)
+        
+        
+        if type(window).__name__ != "list":
+            print("nbCoinToFollow: ",getNbCoinFollow(window))
+            print("Pot: ",getPot(window,potTotal=False))
+            print("Pot total: ", getPot(window,potTotal=True))
+            windowDetectPlayers,listPlayer = detectPlayers(window,verbose=False)
+            print("Number of players: ",len(listPlayer))
+            
+            idxDealer = getDealerIndex(window,listPlayer)
+            setNewDealer(listPlayer,idxDealer)
+            
+            printListPlayer(listPlayer)
+            myCards = readMyCards(window,listPlayer,verbose=False)
+            print("My cards:")
+            
+            if myCards != []:
+                myCards[0].showCards()
+                myCards[1].showCards()
+            else:
+                print("No card detected in your hand")
+            
+            cards = detectCards(window,verbose=True)
+            print("\nCards Table:")
+            for i in range(len(cards)):
+                cards[i].showCards()
+            
+            
+            flagMyTurn = isMyTurn(window)
+            
+            time_elapsed = (time.process_time() - time_start)
+        else:
+            raise Exception("Error: no poker window detected")
+        print("Time execution: ",time_elapsed)
+        
+        if testLogFiles == True:
+            input("Press Enter to continue...")
