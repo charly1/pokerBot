@@ -198,7 +198,7 @@ def guessLastActionsPlayers(listPlayer,stateGame):
         idxPlayerPrev = (i-1+index)%len(listPlayer)
         deltaNbCoinTable = listPlayer[idxPlayer].nbCoinTable - listPlayer[idxPlayerPrev].nbCoinTable
         if listPlayer[idxPlayer].name == glbPlayerName:
-            actionTmp == " "
+            actionTmp = " "
         elif stateGame == "begining" and (i == 1 or i==2):
             actionTmp = "call"
         else:
@@ -639,7 +639,7 @@ if __name__ == "__main__":
         listImgFileName = listdir_fullpath("log/img/")
         idImageInit = 5
     else:
-        listImgFileName = ['log/img/m200206_010442.png']
+        listImgFileName = ['img/test.png']
         idImageInit = 0
     
     

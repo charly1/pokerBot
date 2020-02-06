@@ -13,7 +13,6 @@ import numpy as np
 import pyautogui
 import threading
 from PIL import Image
-import pyautogui
 import datetime
 from time import sleep
 
@@ -28,8 +27,9 @@ def getDateAsString():
 
 
 class AppPokerBot(tk.Frame):
-    def __init__(self, parent, *args, **kwargs):
+    def __init__(self, parent, backGroudRun=True, *args, **kwargs):
         self.parent = parent
+        self.backGroudRun = backGroudRun
         
         self.buttonState = False
         
@@ -289,8 +289,12 @@ class AppPokerBot(tk.Frame):
         
                 
     def cbStartBotBackGround(self):
-        t = threading.Thread(target=self.cbStartBot)
-        t.start()
+        if self.backGroudRun == True:
+            t = threading.Thread(target=self.cbStartBot)
+            t.start()
+        else:
+            self.cbStartBot()
+
         
     def getScreenShot(self):
         if self.imgSource.get() == "Screen":
@@ -299,6 +303,8 @@ class AppPokerBot(tk.Frame):
 
         elif self.imgSource.get() == "File":
             screenshot = cv2.imread(self.fileNameImgSource.get())
+            if type(screenshot).__name__ == "NoneType":
+                raise Exception("Error: File not found")
         return screenshot
     
     def cbStartBot(self):
@@ -435,5 +441,5 @@ class AppPokerBot(tk.Frame):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    AppPokerBot(root)
+    AppPokerBot(root,backGroudRun=False)
     root.mainloop()
