@@ -426,14 +426,21 @@ def decision(cardsAllP,nbRunToTest,aggresivity=0,verbose=False):
     limitFollow = chance
     limitNbPlayer = 1/nbPlayer
     
-    if limitFollow > limitNbPlayer+0.4+aggresivity:
+    if limitFollow > 0.98:
         decision = ["raise","bet"]
+        raiseFactorPot = 100000000
+    elif limitFollow > limitNbPlayer+0.4+aggresivity:
+        decision = ["raise","bet"]
+        raiseFactorPot = 20
     if limitFollow > limitNbPlayer+0.2+aggresivity:
         decision = ["bet","follow"]
+        raiseFactorPot = 2
     elif limitFollow > limitNbPlayer:
         decision = ["call","follow"]
+        raiseFactorPot = 0
     else:
         decision = ["call","fold"]
+        raiseFactorPot = 0
     
     if verbose == True:
         printDeck(cardsAllPcompleted[idPlayerToTest])
@@ -444,7 +451,7 @@ def decision(cardsAllP,nbRunToTest,aggresivity=0,verbose=False):
         print("Limite nb players:",limitNbPlayer)
         print("Decision:",decision)
         
-    return decision,chance,limitNbPlayer
+    return decision,chance,limitNbPlayer,raiseFactorPot
 
     
 if __name__ == "__main__":

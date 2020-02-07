@@ -16,6 +16,7 @@ from PIL import Image
 import datetime
 from time import sleep
 import time
+import windowManager as winMan
 
 
 
@@ -262,7 +263,11 @@ class AppPokerBot(tk.Frame):
                 break
         if self.initialNbPoint == None:
             self.initialNbPoint = nbCoinHand
-        FactorGain = nbCoinHand/self.initialNbPoint
+        if self.initialNbPoint != 0:
+            FactorGain = nbCoinHand/self.initialNbPoint
+        else:
+            FactorGain = 1
+        
         self.valFactorGain.set("%.3f" % FactorGain)
             
             
@@ -409,6 +414,8 @@ class AppPokerBot(tk.Frame):
                 
                 self.updateTimerVal()
                 self.updateGainFactor(listPlayer)
+                
+                self.valBlind = winMan.extractBlindVal()
             
             
                 
@@ -443,7 +450,7 @@ class AppPokerBot(tk.Frame):
                     cardsAllP.append(cardsOtherP)
                 
             
-                decision,chance,limitNbPlayer = prbAn.decision(cardsAllP,int(self.varSpinBoxNbRunSim.get()),verbose=False)
+                decision,chance,limitNbPlayer,raiseFactorBlind = prbAn.decision(cardsAllP,int(self.varSpinBoxNbRunSim.get()),verbose=False)
                 if valPotTotal == 0:
                     valPotTotalTmp = valPot
                 else:
@@ -467,6 +474,8 @@ class AppPokerBot(tk.Frame):
                         if decision[i] in possibleActions:
                             finalDecision = decision[i]
                             index = possibleActions.index(finalDecision)
+                            winMan.typeNumberFromKeyboard(self.valBlind*raiseFactorBlind)
+                            sleep(0.5)
                             clickY = locActions[index][0]
                             clickX = locActions[index][1]
                             flagNoActionPossible = False
@@ -479,12 +488,16 @@ class AppPokerBot(tk.Frame):
                         
                     pyautogui.click(self.MPx+clickX, self.MPy+clickY)
                     pyautogui.moveTo(self.MPx+clickX, self.MPy+clickY+20)
+                    
+                    if self.stateName == "river" and self.valFactorGain.get() > 2:
+                        winMan.saveMoneyBySwitchingTable()
             # else:
             #     self.boolTableDetected.set(False)
             #     print("Error: no poker window detected")
         
         else: 
             self.boolTableDetected.set(False)
+        
         
         
 
