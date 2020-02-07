@@ -267,6 +267,16 @@ def testSuite(hand):
                     vect.append(hand[j])
                     break
         highCard = vect[0].v
+    elif vectSuite[0:4] == "1111" and vectSuite[12] == "1":
+        flagSuite = True
+        highCard = "5"
+        indexVect = [12,0,1,2,3]
+        vect = []
+        for indexTmp in indexVect:
+            for j in range(len(hand)):
+                if strValue[indexTmp] == hand[j].v:
+                    vect.append(hand[j])
+                    break
     else:
         vect = []
         highCard = "none"
@@ -413,12 +423,12 @@ def decision(cardsAllP,nbRunToTest,aggresivity=0,verbose=False):
             nbWinOtherP += 1
 
     chance = nbWinP1/(nbWinP1+nbWinOtherP)
-    limitFollow = chance + (1-chance)*aggresivity
+    limitFollow = chance
     limitNbPlayer = 1/nbPlayer
     
-    if limitFollow > limitNbPlayer+0.4:
+    if limitFollow > limitNbPlayer+0.4+aggresivity:
         decision = ["raise","bet"]
-    if limitFollow > limitNbPlayer+0.2:
+    if limitFollow > limitNbPlayer+0.2+aggresivity:
         decision = ["bet","follow"]
     elif limitFollow > limitNbPlayer:
         decision = ["call","follow"]
@@ -444,8 +454,8 @@ if __name__ == "__main__":
     aggressivity = 0 #from 0 to 1
     nbRunToTest = 5000
     
-    commonHand = ["2h","Js","Jc"]
-    cardsJ1 = genrateHandFromStrList(["Qs","Qd"]+commonHand)
+    commonHand = ["Ah","2s","3c","Qh","9s"]
+    cardsJ1 = genrateHandFromStrList(["4s","5d"]+commonHand)
     cardsJ2 = genrateHandFromStrList(commonHand)
     cardsAllP = [cardsJ1]
     for i in range(nbPlayer-1):

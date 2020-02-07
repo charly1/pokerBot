@@ -15,6 +15,8 @@ import threading
 from PIL import Image
 import datetime
 from time import sleep
+import time
+
 
 
 def saveArrayToPng(filename,array):
@@ -31,22 +33,38 @@ class AppPokerBot(tk.Frame):
         self.parent = parent
         self.backGroudRun = backGroudRun
         
+        self.dicStatsPlayers = {}
+        
         self.buttonState = False
         
         self.toggleActivity = tk.IntVar()
         self.toggleActivity.set(True)
-        self.CBtoggleActivity = tk.Checkbutton(self.parent, text="Activity", variable=self.toggleActivity,state=tk.DISABLED)
+        self.CBtoggleActivity = tk.Checkbutton(self.parent, text="Activity", variable=self.toggleActivity,state=tk.DISABLED,disabledforeground="black")
         self.CBtoggleActivity.pack()
         
         self.boolIsMyTurn = tk.IntVar()
         self.boolIsMyTurn.set(False)
-        self.CBboolIsMyTurn = tk.Checkbutton(self.parent, text="Is it my turn?", variable=self.boolIsMyTurn,state=tk.DISABLED)
+        self.CBboolIsMyTurn = tk.Checkbutton(self.parent, text="Is it my turn?", variable=self.boolIsMyTurn,state=tk.DISABLED,disabledforeground="black")
         self.CBboolIsMyTurn.pack()
         
         self.boolTableDetected = tk.IntVar()
         self.boolTableDetected.set(False)
-        self.CBboolIsTableDetected = tk.Checkbutton(self.parent, text="Is table detected?", variable=self.boolTableDetected,state=tk.DISABLED)
+        self.CBboolIsTableDetected = tk.Checkbutton(self.parent, text="Is table detected?", variable=self.boolTableDetected,state=tk.DISABLED,disabledforeground="black")
         self.CBboolIsTableDetected.pack()
+        
+        self.BoxTimer = tk.LabelFrame(self.parent, text="Time from start", padx=3, pady=3)
+        self.BoxTimer.pack()
+        self.valTimer = tk.StringVar()
+        self.entreeTimer = tk.Entry(self.BoxTimer, textvariable=self.valTimer, width=10,state="disabled",disabledforeground="black")
+        self.entreeTimer.pack()
+        
+        self.BoxFactorGain = tk.LabelFrame(self.parent, text="Factor Gain", padx=3, pady=3)
+        self.BoxFactorGain.pack()
+        self.valFactorGain = tk.StringVar()
+        self.entreeFactorGain = tk.Entry(self.BoxFactorGain, textvariable=self.valFactorGain, width=10,state="disabled",disabledforeground="black")
+        self.entreeFactorGain.pack()
+        
+        
         
         self.BoxParams = tk.LabelFrame(self.parent, text="Parameters", padx=2, pady=2)
         self.BoxParams.pack() 
@@ -105,7 +123,7 @@ class AppPokerBot(tk.Frame):
         self.BoxNbRunSim = tk.LabelFrame(self.BoxProba, text="Number of simulation", padx=3, pady=3)
         self.BoxNbRunSim.pack(fill="both", expand="yes")
         self.varSpinBoxNbRunSim = tk.StringVar(self.BoxNbRunSim)
-        self.varSpinBoxNbRunSim.set("1000")
+        self.varSpinBoxNbRunSim.set("4000")
         self.spinBoxNbRunSim = tk.Spinbox(self.BoxNbRunSim, from_=0, to=10000,textvariable=self.varSpinBoxNbRunSim)
         self.spinBoxNbRunSim.pack()
         
@@ -117,7 +135,7 @@ class AppPokerBot(tk.Frame):
         self.BoxChanceOfWin = tk.LabelFrame(self.BoxProba, text="% of chance of winning", padx=3, pady=3)
         self.BoxChanceOfWin.pack(fill="both", expand="yes")
         self.valChanceOfWin = tk.StringVar()
-        self.entreeChanceOfWin = tk.Entry(self.BoxChanceOfWin, textvariable=self.valChanceOfWin, width=20,state="disabled")
+        self.entreeChanceOfWin = tk.Entry(self.BoxChanceOfWin, textvariable=self.valChanceOfWin, width=20,state="disabled",disabledforeground="black")
         self.entreeChanceOfWin.pack()
         
         self.BoxBetMax = tk.LabelFrame(self.BoxProba, text="bet max", padx=3, pady=3)
@@ -156,7 +174,8 @@ class AppPokerBot(tk.Frame):
         
         self.BoxAroundTabPlayers = tk.LabelFrame(self.BoxInfoPlayer, text="", relief=tk.FLAT)
         self.BoxAroundTabPlayers.pack()
-        self.vectTitle = ["Name","Coin Hand","Coin Table","Dealer","Action"]
+        self.vectTitle = ["Name","Coin Hand","Coin Table","Dealer","Action","Aggr.","Nb Act."]
+        widthVectc = [10,9,9,6,6,6,6]
         self.nbPerson = 10
         self.nbTitleInfoPlayer = len(self.vectTitle)
         self.tab = []
@@ -166,8 +185,8 @@ class AppPokerBot(tk.Frame):
                 if row == 0:
                     vect = self.vectTitle
                 else:
-                    vect = [" "," "," "," "," "]
-                labelTmp = tk.Label(self.BoxAroundTabPlayers, text=vect[col], borderwidth=2, relief=tk.GROOVE,width=10)
+                    vect = [" "," "," "," "," "," "," "]
+                labelTmp = tk.Label(self.BoxAroundTabPlayers, text=vect[col], borderwidth=2, relief=tk.GROOVE,width=widthVectc[col])
                 tabTmp.append(labelTmp)
                 labelTmp.grid(row=row, column=col)
             self.tab.append(tabTmp)
@@ -235,6 +254,22 @@ class AppPokerBot(tk.Frame):
                 tabTmp.append(labelTmp)
                 labelTmp.grid(row=row, column=col)
             self.tabInfoGame.append(tabTmp)
+            
+    def updateGainFactor(self,listPlayer):
+        for i in range(len(listPlayer)):
+            if imgAn.glbPlayerName == listPlayer[i].name:
+                nbCoinHand = listPlayer[i].nbCoinHand
+                break
+        if self.initialNbPoint == None:
+            self.initialNbPoint = nbCoinHand
+        FactorGain = nbCoinHand/self.initialNbPoint
+        self.valFactorGain.set("%.3f" % FactorGain)
+            
+            
+    def updateTimerVal(self):
+        timeElapsed = (time.process_time() - self.timeStart)
+        timeElapsedStr = time.strftime('%H:%M:%S', time.gmtime(timeElapsed))
+        self.valTimer.set(timeElapsedStr)
                     
 
     def cbSaveScreenshot(self):
@@ -259,9 +294,11 @@ class AppPokerBot(tk.Frame):
                     isdealer = "x"
                 else:
                     isdealer = " "
-                vect = [listPlayer[i].name,listPlayer[i].nbCoinHand,listPlayer[i].nbCoinTable,isdealer,listPlayer[i].lastAction]
+                aggressivity = "%.3f" % self.dicStatsPlayers[listPlayer[i].name]["coefAggressivity"]
+                nbAct = self.dicStatsPlayers[listPlayer[i].name]["nbAction"]
+                vect = [listPlayer[i].name,listPlayer[i].nbCoinHand,listPlayer[i].nbCoinTable,isdealer,listPlayer[i].lastAction,aggressivity,nbAct]
             else:
-                vect = [" "," "," "," "," "]
+                vect = [" "," "," "," "," "," "," "]
             for j in range(len(vect)):
                 self.tab[i+1][j].config(text=vect[j])
                 
@@ -315,6 +352,8 @@ class AppPokerBot(tk.Frame):
             else:
                 self.boutonStartBot.config(text="Stop")
 
+        self.timeStart = time.process_time()
+        self.initialNbPoint = None
         while True:                
             screenshot = self.getScreenShot()
 
@@ -354,6 +393,8 @@ class AppPokerBot(tk.Frame):
 
                 valPot = imgAn.getPot(self.window,potTotal=False)
                 valPotTotal = imgAn.getPot(self.window,potTotal=True)
+                
+                self.dicStatsPlayers = imgAn.manageStatsPlayers(listPlayer,self.dicStatsPlayers)
 
                 # for i in range(len(cardsTable))
                 self.nbPlayer.set(nbPlayer)
@@ -362,6 +403,9 @@ class AppPokerBot(tk.Frame):
                 self.updateTabInfoGame(cardsTable)
                 self.updatePot(valPot,valPotTotal)
                 self.updateTabMyHand(myCards)
+                
+                self.updateTimerVal()
+                self.updateGainFactor(listPlayer)
             
             
                 
@@ -441,5 +485,5 @@ class AppPokerBot(tk.Frame):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    AppPokerBot(root,backGroudRun=False)
+    AppPokerBot(root,backGroudRun=True)
     root.mainloop()
