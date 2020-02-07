@@ -52,6 +52,9 @@ class Player():
         self.deltaBx = 30
         self.deltaBy = 30
         self.lastAction = ""
+        self.nbRaise = 0
+        self.nbCall = 0
+        self.nbFold = 0
         
     def showInfo(self):
         print("Player ",self.index," :")
@@ -195,15 +198,16 @@ def guessLastActionsPlayers(listPlayer,stateGame):
         if listPlayer[i].role == "dealer":
             index = i
             break
-    print(index)
     for i in range(len(listPlayer)):
         idxPlayer = (i+index)%len(listPlayer)
         idxPlayerPrev = (i-1+index)%len(listPlayer)
         deltaNbCoinTable = listPlayer[idxPlayer].nbCoinTable - listPlayer[idxPlayerPrev].nbCoinTable
         if listPlayer[idxPlayer].name == glbPlayerName:
             actionTmp = " "
+        elif listPlayer[idxPlayer].nbCoinTable < 0.0001:
+            actionTmp = " "
         elif stateGame == "begining" and (i == 1 or i==2):
-            actionTmp = "call"
+            actionTmp = " "
         else:
             if deltaNbCoinTable > 0.0001:
                 actionTmp = "raised"
@@ -224,10 +228,12 @@ def isfloat(value):
 def readNbCoinTable(window,listPlayer):
     for i in range(len(listPlayer)):
         imgTmp = window[listPlayer[i].cyB-listPlayer[i].deltaBy:listPlayer[i].cyB+listPlayer[i].deltaBy,listPlayer[i].cxB-listPlayer[i].deltaBx:listPlayer[i].cxB+listPlayer[i].deltaBx,:]
-        imgTmp = filterColor(imgTmp,rgb=[239,192,1],delta=80)
-        kernel = np.ones((2,2), np.uint8) 
-        imgTmp = cv2.erode(imgTmp, kernel, iterations=1) 
-        # showImg(imgTmp)
+        # imgTmp = filterColor(imgTmp,rgb=[239,192,1],delta=40)
+        imgTmp = filterColorV2(imgTmp,[19, 236, 78] , [35, 255, 255],inverse=True)
+        
+        # imgTmp = filterColorV2(imgTmp,[40,0,0],[20,240,255])
+        # kernel = np.ones((2,2), np.uint8) 
+        # imgTmp = cv2.erode(imgTmp, kernel, iterations=1) 
         # nbCoinT = pytesseract.image_to_string(imgTmp)
         nbCoinT = pytesseract.image_to_string(imgTmp, config="-c tessedit_char_whitelist=:0123456789 --psm 7")
         if len(nbCoinT)>=2 and nbCoinT[0] == "0":
@@ -365,11 +371,15 @@ def readNbPoints(window,loc,w,h):
     similarityPlayerName = []
     for pt in zip(*loc[::-1]):  # Switch collumns and rows
         imgTmp = window[pt[1]:pt[1]+w,pt[0]:pt[0]+h,:]
+        
+        # imgTmpName = filterColorV2(imgTmp,[0, 0, 130] , [0, 255, 255])
         imgTmpName = filterColor(imgTmp,rgb=[255,255,255],delta=80)
+        
         nameTmp = pytesseract.image_to_string(imgTmpName, config='--psm 7')
         similarityPlayerName.append(SequenceMatcher(None, glbPlayerName, nameTmp).ratio())
         name.append(nameTmp)
         imgTmpNbCoin = filterColor(imgTmp,rgb=[255,204,98],delta=50)
+        # imgTmpNbCoin = filterColorV2(imgTmp,[13, 140, 226] , [31, 200, 255])
         # nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin, config='--psm 7', lang='eng')
         
         nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin)
@@ -414,13 +424,13 @@ def removeCloseCoor(X,nbPlayer):
     
 
 def showImg(window):
-    if len(window.shape) == 2:
-        plt.imshow(window, cmap='gray')   # this colormap will display in black / white
-        plt.show()
-    else:
-        window = np.flip(window,2)
-        plt.imshow(window)   # this colormap will display in black / white
-        plt.show()
+    # if len(window.shape) == 2:
+    #     plt.imshow(window, cmap='gray')   # this colormap will display in black / white
+    #     plt.show()
+    # else:
+    window = np.flip(window,2)
+    plt.imshow(window)   # this colormap will display in black / white
+    plt.show()
 
 
 
@@ -507,12 +517,15 @@ def printListPlayer(listPlayer):
     for i in range(len(listPlayer)):
         listPlayer[i].showInfo()
         
-def filterColorV2(img,l1,l2,verbose=False):     #l1 and l2 in hsv color
+def filterColorV2(img,l1,l2,inverse=False,verbose=False):     #l1 and l2 in hsv color
     l1 = np.asarray(l1)
     l2 = np.asarray(l2)
+
     img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     
     mask = cv2.inRange(img_hsv, l1, l2)
+    if inverse == True:
+        mask = cv2.bitwise_not(mask)
     
     backtorgb = cv2.cvtColor(mask,cv2.COLOR_GRAY2RGB)
     
@@ -606,7 +619,7 @@ def getPot(window,potTotal=False):
     
     return nbCoinPot
 
-def getNbCoinFollow(window):
+def getNbCoinFollow(window,verbose=False):
     template = cv2.imread("img/actSuivre.png")
     loc = getLocTemplateInImage(window,template,threshold=0.9,grouping=True,verbose=False)
     if len(loc) >= 1:
@@ -614,7 +627,9 @@ def getNbCoinFollow(window):
         y = loc[0][1]
         imgNbCoin = window[x:x+12,y:y+80,:]
         imgNbCoin = filterColor(imgNbCoin,rgb=[255,255,255],delta=120)
-        # showImg(imgNbCoin)
+        if verbose == True:
+            showImg(imgNbCoin)
+
         nbCoin = pytesseract.image_to_string(imgNbCoin, config="-c tessedit_char_whitelist=.,0123456789 --psm 6")
         if nbCoin[-1] == ".":
             nbCoin = nbCoin[0:-2]
@@ -622,6 +637,23 @@ def getNbCoinFollow(window):
     else:
         nbCoin = 0
     return nbCoin
+
+def manageStatsPlayers(listPlayer,dicStatsPlayers):
+    infoPlayerInit = {"nbRaise":0,"nbCall":0,"nbFold":0,"nbAction":0,"coefAggressivity":1}
+    for i in range(len(listPlayer)):
+        playerName = listPlayer[i].name
+        if not playerName in dicStatsPlayers:
+            dicStatsPlayers[playerName] = copy.copy(infoPlayerInit)
+        if listPlayer[i].lastAction == "raised":
+            dicStatsPlayers[playerName]["nbRaise"] += 1
+        elif listPlayer[i].lastAction == "call":
+            dicStatsPlayers[playerName]["nbCall"] += 1
+        elif listPlayer[i].lastAction == "fold":
+            dicStatsPlayers[playerName]["nbFold"] += 1
+        dicStatsPlayers[playerName]["nbAction"] += 1
+        dicStatsPlayers[playerName]["coefAggressivity"] = dicStatsPlayers[playerName]["nbRaise"]/dicStatsPlayers[playerName]["nbAction"]
+        
+    return dicStatsPlayers
 
 def getStateGame(nbCardTable):
     if nbCardTable == 0:
@@ -636,15 +668,17 @@ def getStateGame(nbCardTable):
     
         
 if __name__ == "__main__":
-    testLogFiles = False
+    #change to true if you want to go throw all the images in the log file, and false to read only one image
+    testLogFiles = True
     
     if testLogFiles == True:
         listImgFileName = listdir_fullpath("log/img/")
         idImageInit = 5
     else:
-        listImgFileName = ['img/test.png']
+        listImgFileName = ['log/img/m200206_230041.png']
         idImageInit = 0
     
+    dicStatsPlayers = {}
     
     for j in range(idImageInit,len(listImgFileName)):
         fileName = listImgFileName[j]
@@ -685,7 +719,8 @@ if __name__ == "__main__":
             else:
                 print("No card detected in your hand")
             
-
+            dicStatsPlayers = manageStatsPlayers(listPlayer,dicStatsPlayers)
+            print(dicStatsPlayers)
             
             
             flagMyTurn = isMyTurn(window)
