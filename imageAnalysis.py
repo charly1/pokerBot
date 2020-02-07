@@ -30,7 +30,10 @@ def listdir_fullpath(d):
 """time_start = time.clock()
 time_elapsed = (time.clock() - time_start)"""
 
-glbPlayerName = "gros_loulou"
+if platform == "win32":
+    glbPlayerName = "tobamai"
+else: 
+    glbPlayerName = "gros_loulou"
 
 class Player():
     def __init__(self,index,name,nbCoinHand,cxP,cyP,w,h,cxT,cyT):
