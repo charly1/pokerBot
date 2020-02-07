@@ -30,7 +30,7 @@ def listdir_fullpath(d):
 """time_start = time.clock()
 time_elapsed = (time.clock() - time_start)"""
 
-glbPlayerName = "tobamai"
+glbPlayerName = "gros_loulou"
 
 class Player():
     def __init__(self,index,name,nbCoinHand,cxP,cyP,w,h,cxT,cyT):
@@ -91,7 +91,7 @@ def findWindow(large_image,verbose=False):
     # Read the images from the file
     small_image = cv2.imread('img/house.png')
     smallBottom_image = cv2.imread('img/smiley.png')
-    
+
     result = cv2.matchTemplate(large_image,small_image, cv2.TM_CCOEFF_NORMED)
     resultBot = cv2.matchTemplate(large_image,smallBottom_image, cv2.TM_CCOEFF_NORMED)
     locTup = np.where(result >= 0.99)
@@ -224,7 +224,7 @@ def readNbCoinTable(window,listPlayer):
         imgTmp = filterColor(imgTmp,rgb=[239,192,1],delta=80)
         kernel = np.ones((2,2), np.uint8) 
         imgTmp = cv2.erode(imgTmp, kernel, iterations=1) 
-        showImg(imgTmp)
+        # showImg(imgTmp)
         # nbCoinT = pytesseract.image_to_string(imgTmp)
         nbCoinT = pytesseract.image_to_string(imgTmp, config="-c tessedit_char_whitelist=:0123456789 --psm 7")
         if len(nbCoinT)>=2 and nbCoinT[0] == "0":
@@ -611,7 +611,7 @@ def getNbCoinFollow(window):
         y = loc[0][1]
         imgNbCoin = window[x:x+12,y:y+80,:]
         imgNbCoin = filterColor(imgNbCoin,rgb=[255,255,255],delta=120)
-        showImg(imgNbCoin)
+        # showImg(imgNbCoin)
         nbCoin = pytesseract.image_to_string(imgNbCoin, config="-c tessedit_char_whitelist=.,0123456789 --psm 6")
         if nbCoin[-1] == ".":
             nbCoin = nbCoin[0:-2]
@@ -647,11 +647,12 @@ if __name__ == "__main__":
         fileName = listImgFileName[j]
         time_start = time.process_time()
         screenshot = cv2.imread(fileName)
-        # screenshot = cv2.imread('img/actions.png')
+        # screenshot = cv2.imread('img/actions.PNG')
+        # showImg(screenshot)
         window,MPx,MPy = findWindow(screenshot,verbose=False)
         if testLogFiles == True:
             print("\Analysis of the image no: ",j)
-        showImg(window)
+        # showImg(window)
         
         
         if type(window).__name__ != "list":

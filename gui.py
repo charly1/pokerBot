@@ -334,7 +334,9 @@ class AppPokerBot(tk.Frame):
         
     def updateData(self,screenshot):
         self.window,self.MPx,self.MPy = imgAn.findWindow(screenshot)
+        #imgAn.showImg(self.window)
         if type(self.window).__name__ != "list":
+            self.boolTableDetected.set(True)
             flagMyTurn = imgAn.isMyTurn(self.window)
             self.boolIsMyTurn.set(flagMyTurn)
             if  self.boolIsMyTurn.get() == True:
@@ -343,8 +345,9 @@ class AppPokerBot(tk.Frame):
                 screenshot = self.getScreenShot()
                 self.window,self.MPx,self.MPy = imgAn.findWindow(screenshot)
                 
-                self.boolTableDetected.set(True)
+                # self.boolTableDetected.set(True)                
                 # imgAn.showImg(self.window)
+
                 cardsTable = imgAn.detectCards(self.window,verbose=False)
                 self.stateName = imgAn.getStateGame(len(cardsTable))
                 windowDetectPlayers,listPlayer = imgAn.detectPlayers(self.window,self.stateName)
@@ -432,10 +435,12 @@ class AppPokerBot(tk.Frame):
                         
                     pyautogui.click(self.MPx+clickX, self.MPy+clickY)
                     pyautogui.moveTo(self.MPx+clickX, self.MPy+clickY+20)
-            else:
-                self.boolTableDetected.set(False)
-                # print("Error: no poker window detected")
+            # else:
+            #     self.boolTableDetected.set(False)
+            #     print("Error: no poker window detected")
         
+        else: 
+            self.boolTableDetected.set(False)
         
         
 
