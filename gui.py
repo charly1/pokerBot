@@ -16,6 +16,7 @@ from PIL import Image
 import datetime
 from time import sleep
 import time
+import pywinauto
 
 
 
@@ -463,12 +464,19 @@ class AppPokerBot(tk.Frame):
 
 
                     flagNoActionPossible = True
+                    key = 'f1'
                     for i in range(len(decision)):
                         if decision[i] in possibleActions:
                             finalDecision = decision[i]
-                            index = possibleActions.index(finalDecision)
-                            clickY = locActions[index][0]
-                            clickX = locActions[index][1]
+                            if finalDecision == 'fold':
+                                key = 'f1'
+                            elif finalDecision == 'call' or finalDecision == 'follow':
+                                key = 'f2'
+                            elif finalDecision == 'bet' or finalDecision == 'raise':
+                                key = 'f3'
+                            # index = possibleActions.index(finalDecision)
+                            # clickY = locActions[index][0]
+                            # clickX = locActions[index][1]
                             flagNoActionPossible = False
                             break
                         
@@ -477,8 +485,9 @@ class AppPokerBot(tk.Frame):
                     else:
                         print("Warning: No matching action possible. Possible action: ",possibleActions," Decisions: ",decision)
                         
-                    pyautogui.click(self.MPx+clickX, self.MPy+clickY)
-                    pyautogui.moveTo(self.MPx+clickX, self.MPy+clickY+20)
+                    # pyautogui.click(self.MPx+clickX, self.MPy+clickY)
+                    # pyautogui.moveTo(self.MPx+clickX, self.MPy+clickY+20)
+                    pyautogui.press(key)
             # else:
             #     self.boolTableDetected.set(False)
             #     print("Error: no poker window detected")
