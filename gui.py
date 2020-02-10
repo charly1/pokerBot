@@ -30,36 +30,39 @@ def getDateAsString():
 
 
 class AppPokerBot(tk.Frame):
-    def __init__(self, parent, backGroudRun=True, *args, **kwargs):
+    def __init__(self, parent, backGroudRun=True, multiWindow=False, *args, **kwargs):
         self.parent = parent
         self.backGroudRun = backGroudRun
+        self.multiWindow = multiWindow
         
         self.dicStatsPlayers = {}
         
         self.buttonState = False
         
+        self.BoxGlbInfos = tk.LabelFrame(self.parent, text="Global infos", padx=2, pady=2)
+        self.BoxGlbInfos.pack(side=tk.LEFT) 
         self.toggleActivity = tk.IntVar()
         self.toggleActivity.set(True)
-        self.CBtoggleActivity = tk.Checkbutton(self.parent, text="Activity", variable=self.toggleActivity,state=tk.DISABLED,disabledforeground="black")
+        self.CBtoggleActivity = tk.Checkbutton(self.BoxGlbInfos, text="Activity", variable=self.toggleActivity,state=tk.DISABLED,disabledforeground="black")
         self.CBtoggleActivity.pack()
         
         self.boolIsMyTurn = tk.IntVar()
         self.boolIsMyTurn.set(False)
-        self.CBboolIsMyTurn = tk.Checkbutton(self.parent, text="Is it my turn?", variable=self.boolIsMyTurn,state=tk.DISABLED,disabledforeground="black")
+        self.CBboolIsMyTurn = tk.Checkbutton(self.BoxGlbInfos, text="Is it my turn?", variable=self.boolIsMyTurn,state=tk.DISABLED,disabledforeground="black")
         self.CBboolIsMyTurn.pack()
         
         self.boolTableDetected = tk.IntVar()
         self.boolTableDetected.set(False)
-        self.CBboolIsTableDetected = tk.Checkbutton(self.parent, text="Is table detected?", variable=self.boolTableDetected,state=tk.DISABLED,disabledforeground="black")
+        self.CBboolIsTableDetected = tk.Checkbutton(self.BoxGlbInfos, text="Is table detected?", variable=self.boolTableDetected,state=tk.DISABLED,disabledforeground="black")
         self.CBboolIsTableDetected.pack()
         
-        self.BoxTimer = tk.LabelFrame(self.parent, text="Time from start", padx=3, pady=3)
+        self.BoxTimer = tk.LabelFrame(self.BoxGlbInfos, text="Time from start", padx=3, pady=3)
         self.BoxTimer.pack()
         self.valTimer = tk.StringVar()
         self.entreeTimer = tk.Entry(self.BoxTimer, textvariable=self.valTimer, width=10,state="disabled",disabledforeground="black")
         self.entreeTimer.pack()
         
-        self.BoxFactorGain = tk.LabelFrame(self.parent, text="Factor Gain", padx=3, pady=3)
+        self.BoxFactorGain = tk.LabelFrame(self.BoxGlbInfos, text="Factor Gain", padx=3, pady=3)
         self.BoxFactorGain.pack()
         self.valFactorGain = tk.StringVar()
         self.entreeFactorGain = tk.Entry(self.BoxFactorGain, textvariable=self.valFactorGain, width=10,state="disabled",disabledforeground="black")
@@ -68,7 +71,7 @@ class AppPokerBot(tk.Frame):
         
         
         self.BoxParams = tk.LabelFrame(self.parent, text="Parameters", padx=2, pady=2)
-        self.BoxParams.pack() 
+        self.BoxParams.pack(side=tk.LEFT) 
         
         self.BoxCmd = tk.LabelFrame(self.BoxParams, text="Commands", padx=5, pady=5)
         self.BoxCmd.pack(side=tk.LEFT)   
@@ -161,7 +164,7 @@ class AppPokerBot(tk.Frame):
 
 
         self.BoxInfos = tk.LabelFrame(self.parent, text="Info", padx=2, pady=2)
-        self.BoxInfos.pack()
+        self.BoxInfos.pack(side=tk.LEFT)
         
         self.BoxInfoPlayer = tk.LabelFrame(self.BoxInfos, text="Info Players:")
         self.BoxInfoPlayer.pack(side=tk.LEFT,fill=tk.BOTH)
@@ -359,25 +362,30 @@ class AppPokerBot(tk.Frame):
 
         self.timeStart = time.process_time()
         self.initialNbPoint = None
-        while True:                
-            screenshot = self.getScreenShot()
+        while True:    
+            if self.multiWindow == False:            
+                screenshotObjList = [winMan.Window(self.getScreenShot(),0,0)]
+                listWinName = [""]
+            else:
+                screenshotObjList,listWinName = winMan.takeScreenShotOfAllGameWin()
 
-            self.initData()
-            self.updateData(screenshot)
-            
-            self.parent.update_idletasks()
-            
-            self.toggleActivity.set(not self.toggleActivity.get())
-            
-            if self.toggleLoop.get() == False or self.buttonState == False:
-                break
+                
+
+            for i in range(len(screenshotObjList)):
+                self.updateData(screenshotObjList[i],winName=listWinName[i])
+                
+                self.parent.update_idletasks()
+                
+                self.toggleActivity.set(not self.toggleActivity.get())
+                
+                if self.toggleLoop.get() == False or self.buttonState == False:
+                    break
         
         
-    def initData(self):
-        pass
-        
-    def updateData(self,screenshot):
-        self.window,self.MPx,self.MPy = imgAn.findWindow(screenshot)
+    def updateData(self,screenshotObj,winName=""):
+        self.window,self.MPx,self.MPy = imgAn.findWindow(screenshotObj.w)
+        self.MPx += screenshotObj.x
+        self.MPy += screenshotObj.y
         #imgAn.showImg(self.window)
         if type(self.window).__name__ != "list":
             self.boolTableDetected.set(True)
@@ -387,7 +395,20 @@ class AppPokerBot(tk.Frame):
                 #repeat the screenshot after a break, to avoid blur images
                 sleep(0.8)
                 screenshot = self.getScreenShot()
+                if self.multiWindow == False: 
+                    screenshotObj = winMan.Window(self.getScreenShot(),0,0)
+                    screenshot = screenshotObj.w
+                else:
+                    screenshotObjList,listWinName = winMan.takeScreenShotOfAllGameWin()
+                    for i in range(len(listWinName)):
+                        if winName == listWinName[i]:
+                            screenshotObj = screenshotObjList[i]
+                            screenshot = screenshotObjList[i].w
+                            break
+                    
                 self.window,self.MPx,self.MPy = imgAn.findWindow(screenshot)
+                self.MPx += screenshotObj.x
+                self.MPy += screenshotObj.y
                 
                 # self.boolTableDetected.set(True)                
                 # imgAn.showImg(self.window)
@@ -489,8 +510,8 @@ class AppPokerBot(tk.Frame):
                     pyautogui.click(self.MPx+clickX, self.MPy+clickY)
                     pyautogui.moveTo(self.MPx+clickX, self.MPy+clickY+20)
                     
-                    if self.stateName == "river" and self.valFactorGain.get() > 2:
-                        winMan.saveMoneyBySwitchingTable()
+                    # if float(self.valFactorGain.get()) > 2:
+                    #     winMan.saveMoneyBySwitchingTable()
             # else:
             #     self.boolTableDetected.set(False)
             #     print("Error: no poker window detected")
@@ -503,5 +524,5 @@ class AppPokerBot(tk.Frame):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    AppPokerBot(root,backGroudRun=True)
+    AppPokerBot(root,backGroudRun=True,multiWindow=False)
     root.mainloop()

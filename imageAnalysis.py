@@ -374,15 +374,18 @@ def readNbPoints(window,loc,w,h):
         
         # imgTmpName = filterColorV2(imgTmp,[0, 0, 130] , [0, 255, 255])
         imgTmpName = filterColor(imgTmp,rgb=[255,255,255],delta=80)
+        # _, img_binarized = cv2.threshold(imgTmpName, threshold, 255, cv2.THRESH_BINARY)
         
         nameTmp = pytesseract.image_to_string(imgTmpName, config='--psm 7')
+        
+        
         similarityPlayerName.append(SequenceMatcher(None, glbPlayerName, nameTmp).ratio())
         name.append(nameTmp)
         imgTmpNbCoin = filterColor(imgTmp,rgb=[255,204,98],delta=50)
         # imgTmpNbCoin = filterColorV2(imgTmp,[13, 140, 226] , [31, 200, 255])
         # nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin, config='--psm 7', lang='eng')
         
-        nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin)
+        nbCoinTmp = pytesseract.image_to_string(imgTmpNbCoin,config='--psm 7')
         
         
         if nbCoinTmp == '':
@@ -669,13 +672,13 @@ def getStateGame(nbCardTable):
         
 if __name__ == "__main__":
     #change to true if you want to go throw all the images in the log file, and false to read only one image
-    testLogFiles = True
+    testLogFiles = False
     
     if testLogFiles == True:
         listImgFileName = listdir_fullpath("log/img/")
         idImageInit = 5
     else:
-        listImgFileName = ['log/img/m200206_230041.png']
+        listImgFileName = ['log/img/m200210_084817.png']
         idImageInit = 0
     
     dicStatsPlayers = {}
@@ -689,7 +692,7 @@ if __name__ == "__main__":
         window,MPx,MPy = findWindow(screenshot,verbose=False)
         if testLogFiles == True:
             print("\Analysis of the image no: ",j)
-        # showImg(window)
+        showImg(window)
         
         
         if type(window).__name__ != "list":
