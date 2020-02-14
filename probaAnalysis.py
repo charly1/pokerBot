@@ -11,6 +11,8 @@ Created on Wed Jan 15 16:14:32 2020
 import numpy as np
 from random import randrange
 import copy
+import pickle
+import time
 
 class Card():
     def __init__(self,strCard):
@@ -28,6 +30,7 @@ class Card():
             value = strCard[0]
         else:
             value = -1
+            raise Exception("Error: ",strCard[0]," is not a valid value for",strCard)
         return value
     
     def extractFamily(self,strCard):
@@ -36,9 +39,11 @@ class Card():
             value = strCard[-1]
         else:
             value = -1
+            raise Exception("Error: ",strCard[-1]," is not a valid family for ",strCard)
         return value
     
-def genrateHandFromStrList(listStrCards):
+def genrateHandFromStrList(listStrCardsCp):
+    listStrCards = copy.copy(listStrCardsCp)
     for i in range(len(listStrCards)):
         listStrCards[i] = Card(listStrCards[i])
     return listStrCards
@@ -46,7 +51,6 @@ def genrateHandFromStrList(listStrCards):
 def printDeck(deck):
     for i in range(len(deck)):
         print(deck[i].v,deck[i].f)
-    print("")
     
 def generateDeck():
     strValue = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"]
@@ -83,11 +87,16 @@ def removeCardFromDeck(deckTmp,card):
     deck = copy.copy(deckTmp)
     if type(card).__name__ != "list":
         card = [card]
+
     for j in range(len(card)):
+        flagCardFound = False
         for i in range(len(deck)):
             if deck[i].v == card[j].v and deck[i].f == card[j].f:
                 deck.remove(deck[i])
+                flagCardFound = True
                 break
+        if flagCardFound == False:
+            raise Exception("Error: crads in double has been found in the hand or on the table")
     return deck
 
 def getBestHand(hand):
@@ -143,7 +152,8 @@ def getBestHand(hand):
     
 def testNbCardSameValue(hand):
     vect = np.zeros(13)
-    strValue = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"]
+    # strValue = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"]
+    strValue = ["A","K","Q","J","10","9","8","7","6","5","4","3","2"]
     for i in range(len(hand)):
         vect[strValue.index(hand[i].v)] += 1
     maxSameValue = int(np.max(vect))
@@ -162,7 +172,7 @@ def testNbCardSameValue(hand):
         combo = "brelan"
     elif maxSameValue == 2 and secMaxSameValue == 2:
         combo = "double pair"
-        if strValue.index(highCard) < strValue.index(lowCard):
+        if strValue.index(highCard) > strValue.index(lowCard):
             tmp = highCard
             highCard = lowCard
             lowCard = tmp
@@ -296,12 +306,10 @@ def winnerTest(cardsJ1,cardsJ2,verbose=False):
         printDeck(cardsJ1)
         print("Combo:",comboJ1,"highCard:",highCardJ1)
         # printDeck(handSelectedJ1)
-        print("")
         print("J2:")
         printDeck(cardsJ2)
         print("Combo:",comboJ2,"highCard:",highCardJ2)
         # printDeck(handSelectedJ2)
-        print("")
     order = ["none","pair","double pair","brelan","suite","color","full","carre","quinte flush"]
     idxJ1 = order.index(comboJ1)
     idxJ2 = order.index(comboJ2)
@@ -360,10 +368,17 @@ def winnerTest(cardsJ1,cardsJ2,verbose=False):
             print("J2 won")
         else:
             print("equality")
+        print("")
+        
+    dictInfoCombo = {"comboJ1":comboJ1,
+                     "comboJ2":comboJ2,
+                     "highCardJ1":highCardJ1,
+                     "highCardJ2":highCardJ2,
+                     "playerWinnerId":playerWinnerId}
 
-    return playerWinnerId
+    return playerWinnerId,dictInfoCombo
     
-def decision(cardsAllP,nbRunToTest,aggresivity=0,verbose=False):
+def decision(cardsAllP,cardsTable,nbRunToTest,aggresivity=0,verbose=False):
     """
     Parameters
     ----------
@@ -387,6 +402,8 @@ def decision(cardsAllP,nbRunToTest,aggresivity=0,verbose=False):
 
     """
     nbCardTotal = 7
+    nbCardTableMax = 5
+    nbCardHandMax = 2
     
     nbPlayer = len(cardsAllP)
     
@@ -399,20 +416,24 @@ def decision(cardsAllP,nbRunToTest,aggresivity=0,verbose=False):
     deckInit = generateDeck()
     for i in range(nbPlayer):
         deckInit = removeCardFromDeck(deckInit,cardsAllP[i])
+    deckInit = removeCardFromDeck(deckInit,cardsTable)
     
     for j in range(nbRunToTest):
         deck = deckInit
         
+        cardsTableCompleted,deck = completeHandWithRandomcards(nbCardTableMax,cardsTable,deck)
+        
         cardsAllPcompleted = []
         for i in range(nbPlayer):
-            cardsTmp,deck = completeHandWithRandomcards(nbCardTotal,cardsAllP[i],deck)
+            cardsTmp = cardsAllP[i]+cardsTableCompleted
+            cardsTmp,deck = completeHandWithRandomcards(nbCardTotal,cardsTmp,deck)
             cardsAllPcompleted.append(cardsTmp)
         
         idPlayerToTest = 0
         flagP1win = True
         for i in range(nbPlayer):
             if i != idPlayerToTest:
-                playerWinnerId = winnerTest(cardsAllPcompleted[idPlayerToTest],cardsAllPcompleted[i],verbose=False)
+                playerWinnerId,dictInfoCombo = winnerTest(cardsAllPcompleted[idPlayerToTest],cardsAllPcompleted[i],verbose=False)
                 if playerWinnerId == 2:
                     flagP1win = False
                     break
@@ -451,29 +472,201 @@ def decision(cardsAllP,nbRunToTest,aggresivity=0,verbose=False):
         print("Limite nb players:",limitNbPlayer)
         print("Decision:",decision)
         
-    return decision,chance,limitNbPlayer,raiseFactorPot
+    return decision,chance,limitNbPlayer,raiseFactorPot,dictInfoCombo
 
+def findBestNbRunForStdDevMax(cardsJ1,cardsTable,stdDevMax,nbRunInit):
+    vectChance = []
+    stdDev = 10000
+    nbRunStepCoef = 1.5
+    nbRunOpptimum = nbRunInit
+    while stdDev > stdDevMax:
+        vectChance = []
+        for i in range(100):
+            cardsJ1testVar = genrateHandFromStrList(["9h","8s"])
+            cardsJ2 = genrateHandFromStrList([])
+            cardsTable = genrateHandFromStrList([])
+            cardsAllP = [cardsJ1testVar]
+            for j in range(nbPlayer-1):
+                cardsAllP.append(cardsJ2)
+            _,chance,limitNbPlayer,_,_ = decision(cardsAllP,cardsTable,nbRunOpptimum,verbose=False)
+            vectChance.append(chance)
+            # print(chance)
+            
+        stdDev = np.std(vectChance)
+        print("std:",stdDev)
+        if stdDev > stdDevMax:
+            nbRunOpptimum = int(nbRunOpptimum*nbRunStepCoef)
+            print(nbRunOpptimum)
+    
+    return nbRunOpptimum
+
+def saveData(your_content,varName):
+    fileName = "data/"+varName
+    with open(fileName, 'wb') as f:
+        pickle.dump(your_content, f)
+        
+def loadData(varName):
+    fileName = "data/"+varName
+    with open(fileName, 'rb') as f:
+        var_you_want_to_load_into = pickle.load(f)
+    return var_you_want_to_load_into
+
+def generateBucketsPreFlop(boolSaveData=False):
+    strValue = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"]
+    strFamily = ["h","s"]
+    nbPlayer = 2
+    
+    checkNbRun = 0
+    listCardsTest = []
+    for i in range(len(strValue)):
+        for j in range(len(strFamily)-1):
+            card1 = strValue[i]+strFamily[j]
+            for k in range(len(strValue)):
+                for l in range(len(strFamily)):
+                    if not(i==k and j==l):
+                        if i>=k:
+                            checkNbRun += 1
+                            card2 = strValue[k]+strFamily[l]
+                            listCardsTest.append([card1,card2])
+                            # print(card1,card2)
+                        
+    # nbRunToTest = findBestNbRunForStdDevMax(genrateHandFromStrList(["9h","8s"]),genrateHandFromStrList([]),0.01,3000)
+    nbRunToTest = 10000
+                        
+    chanceVect = []
+    for i in range(len(listCardsTest)):
+        cardsJ1 = genrateHandFromStrList(listCardsTest[i])
+        cardsJ2 = genrateHandFromStrList([])
+        cardsTable = genrateHandFromStrList([])
+        cardsAllP = [cardsJ1]
+        for j in range(nbPlayer-1):
+            cardsAllP.append(cardsJ2)
+        
+        _,chance,limitNbPlayer,_,_ = decision(cardsAllP,cardsTable,nbRunToTest,verbose=False)
+        strCards = listCardsTest[i][0]+listCardsTest[i][1]
+        chanceVect.append(chance)
+        print(strCards,chance)
+        
+    argSort = np.argsort(chanceVect)
+    listCardsTest = [listCardsTest[i] for i in argSort]
+    chanceVect = [chanceVect[i] for i in argSort]
+    
+    if boolSaveData == True:
+        dicSave = {"chanceVect":chanceVect,"listCardsTest":listCardsTest}
+        saveData(dicSave,"bucketPreFlop")
+        
+
+                        
+                        
+    print("checkNbRun:",checkNbRun)
+    
+def getBucketIdPreflop(cards,verbose=False):
+    #speed: 8000/s
+    if len(cards)!=2:
+        raise Exception("Error: wrong number of cards given to the bucket preflop calculator")
+    strValue = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"]
+    
+    dicSave = loadData("bucketPreFlop")
+    chanceVect = dicSave["chanceVect"]
+    listCardsTest = dicSave["listCardsTest"]
+    # argSort = np.argsort(chanceVect)
+    # listCardsTest = [listCardsTest[i] for i in argSort]
+    # chanceVect = [chanceVect[i] for i in argSort]
+    
+    if strValue.index(cards[0].v) > strValue.index(cards[1].v):
+        equivCard = [cards[0].v,cards[1].v]
+    else:
+        equivCard = [cards[1].v,cards[0].v]
+    equivCard[0] += "h"
+    if cards[0].f == cards[1].f:
+        equivCard[1] += "h" 
+    else:
+        equivCard[1] += "s" 
+    # equivCards = genrateHandFromStrList(equivCard1)
+    flagCardFound = False
+    for i in range(len(listCardsTest)):
+        if (listCardsTest[i][0] == equivCard[0] and listCardsTest[i][1] == equivCard[1]) or (listCardsTest[i][0] == equivCard[1] and listCardsTest[i][1] == equivCard[0]):
+            chance = chanceVect[i]
+            indexTmp = i
+            flagCardFound = True
+            break
+    if flagCardFound == False:
+        raise Exception("Error: equivalence of card not found")
+    rangeCard = indexTmp/len(listCardsTest)
+    if verbose == True:
+        print("chance:",chance,"rangeCard:",rangeCard)
+    return chance,rangeCard
+
+    
+def testAlgo():
+    parametersToTest = ["comboJ1","comboJ2","highCardJ1","highCardJ2","playerWinnerId"]
+    test = []
+    test.append({"cardsJ1":["2s","2h"],
+                 "cardsJ2":["3s","10s"],
+                 "cardsTable":["3h","10c","10h","Jc","8s"],
+                 "comboJ1":"double pair",
+                 "comboJ2":"full",
+                 "highCardJ1":["10","2"],
+                 "highCardJ2":["10","3"],
+                 "playerWinnerId":2})
+    
+    test.append({"cardsJ1":["Qs","As"],
+                 "cardsJ2":["Kd","Kc"],
+                 "cardsTable":["3h","Ks","10s","Js","Kh"],
+                 "comboJ1":"quinte flush",
+                 "comboJ2":"carre",
+                 "highCardJ1":"A",
+                 "highCardJ2":"K",
+                 "playerWinnerId":1})
+    
+    test.append({"cardsJ1":["Qs","Ah"],
+                 "cardsJ2":["Kd","Qc"],
+                 "cardsTable":["3h","Ks","10s","Js","Kh"],
+                 "comboJ1":"suite",
+                 "comboJ2":"brelan",
+                 "highCardJ1":"A",
+                 "highCardJ2":"K",
+                 "playerWinnerId":1})
+    
+    flagError = False
+    for i in range(len(test)):
+        cardsJ1 = genrateHandFromStrList(test[i]["cardsJ1"])
+        cardsJ2 = genrateHandFromStrList(test[i]["cardsJ2"])
+        cardsTable = genrateHandFromStrList(test[i]["cardsTable"])
+        cardsAllP = [cardsJ1]
+        for j in range(nbPlayer-1):
+            cardsAllP.append(cardsJ2)
+        _,_,_,_,dictInfoCombo = decision(cardsAllP,cardsTable,nbRunToTest,verbose=False)
+        for j in range(len(parametersToTest)):
+            paramName = parametersToTest[j]
+            if dictInfoCombo[paramName] != test[i][paramName]:
+                flagError = True
+                raise Exception("Error:",paramName," is not valid for test no:",i)
+                break
+    if flagError == False:
+        print("Test passed successfully")
     
 if __name__ == "__main__":
     
-    nbPlayer = 5
+    nbPlayer = 2
     
     aggressivity = 0 #from 0 to 1
-    nbRunToTest = 5000
+    nbRunToTest = 1
     
-    commonHand = ["Ah","2s","3c","Qh","9s"]
-    cardsJ1 = genrateHandFromStrList(["4s","5d"]+commonHand)
-    cardsJ2 = genrateHandFromStrList(commonHand)
-    cardsAllP = [cardsJ1]
-    for i in range(nbPlayer-1):
-        cardsAllP.append(cardsJ2)
+    # testAlgo()
     
+    # generateBucketsPreFlop(boolSaveData=True)
+    
+    print(getBucketIdPreflop(genrateHandFromStrList(["4h","As"]),verbose=False))
 
-    decision(cardsAllP,nbRunToTest,verbose=True)
+    
+    # cardsTable = genrateHandFromStrList(["2h","10c","10h","Jc","8s"])
+    # cardsJ1 = genrateHandFromStrList(["2h","2s"])
+    # cardsJ2 = genrateHandFromStrList([])
+    # cardsAllP = [cardsJ1]
+    # for i in range(nbPlayer-1):
+    #     cardsAllP.append(cardsJ2)
 
-
-
-
-
-
+    # decision(cardsAllP,cardsTable,nbRunToTest,verbose=False)
+    
 

@@ -22,6 +22,7 @@ import scipy.cluster.hierarchy as hcluster
 from difflib import SequenceMatcher
 import time
 import os
+import probaAnalysis as prbAn
 
 def listdir_fullpath(d):
     return [os.path.join(d, f) for f in os.listdir(d)]
@@ -678,7 +679,7 @@ if __name__ == "__main__":
         listImgFileName = listdir_fullpath("log/img/")
         idImageInit = 5
     else:
-        listImgFileName = ['log/img/m200210_084817.png']
+        listImgFileName = ['log/img/a200211_102622.png']
         idImageInit = 0
     
     dicStatsPlayers = {}
@@ -724,6 +725,8 @@ if __name__ == "__main__":
             
             dicStatsPlayers = manageStatsPlayers(listPlayer,dicStatsPlayers)
             print(dicStatsPlayers)
+            
+            # decision,chance,limitNbPlayer,raiseFactorBlind = prbAn.decision(cardsAllP,int(self.varSpinBoxNbRunSim.get()),verbose=False)
             
             
             flagMyTurn = isMyTurn(window)

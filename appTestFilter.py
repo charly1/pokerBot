@@ -2,6 +2,9 @@
 """
 Created on Thu Feb  6 15:40:31 2020
 
+This file has been created to help the programmer to design some performant 
+filters to preprocess image, and extract text.
+
 @author: Charly
 """
 
@@ -14,17 +17,6 @@ import cv2
 import copy
 
 
-# root = tk.Tk()
-
-# img = ImageTk.PhotoImage(Image.open(path))
-# panel = tk.Label(root, image=img)
-# panel.pack(side="bottom", fill="both", expand="yes")
-
-
-
-# root.bind("<Return>", callback)
-# root.mainloop()
-
 def saveArrayToPng(filename,array):
     im = Image.fromarray(np.flip(array,axis=2))
     im.save(filename)
@@ -32,6 +24,24 @@ def saveArrayToPng(filename,array):
 
 class AppTestFilter(tk.Frame):
     def __init__(self, parent, pathFile, *args, **kwargs):
+        """
+        Parameters
+        ----------
+        parent : tkinter window
+
+        pathFile : string
+            Path of the image to analyse.
+            
+        *args : TYPE
+            Not needed.
+        **kwargs : TYPE
+            Not needed.
+
+        Returns
+        -------
+        None.
+
+        """
         self.parent = parent
         self.path = pathFile
               

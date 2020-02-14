@@ -8,12 +8,6 @@ import re
 from PIL import ImageGrab
 import win32gui, win32com.client
 
-# gw.getAllWindows()
-# gw.getWindowsWithTitle('Untitled')
-# gw.getFocusedWindow()
-# gw.getFocusedWindow().title
-# gw.getWindowsAt(10, 10)
-
 nameWinMenuWinamax = "Accès rapide"
 
 class Window():

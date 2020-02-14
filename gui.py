@@ -450,12 +450,13 @@ class AppPokerBot(tk.Frame):
                     vectCardsJ1 = []
                 vectCardsJ2 = []
                     
+                cardsTable
                 if int(self.nbCardTable.get()) >= 1:
                     for i in range(int(self.nbCardTable.get())):
                         if type(cardsTable[i]).__name__ != "list":
-                            tmp = cardsTable[i].val+cardsTable[i].fam
-                            vectCardsJ1.append(tmp)
-                            vectCardsJ2.append(tmp)
+                            cardsTable[i] = cardsTable[i].val+cardsTable[i].fam
+                            # vectCardsJ1.append(tmp)
+                            # vectCardsJ2.append(tmp)
                         else:
                             print("Warning: one of the card on the table has been mis detected")
     
@@ -465,13 +466,14 @@ class AppPokerBot(tk.Frame):
                 # decision,chance,limitNbPlayer = prbAn.decision(cardsJ1,cardsJ2,nbPlayer,int(self.varSpinBoxNbRunSim.get()),verbose=False)
                 
                 cardsJ1 = prbAn.genrateHandFromStrList(vectCardsJ1)
+                cardsTable = prbAn.genrateHandFromStrList(cardsTable)
                 cardsOtherP = prbAn.genrateHandFromStrList(vectCardsJ2)
                 cardsAllP = [cardsJ1]
                 for i in range(nbPlayer-1):
                     cardsAllP.append(cardsOtherP)
                 
             
-                decision,chance,limitNbPlayer,raiseFactorBlind = prbAn.decision(cardsAllP,int(self.varSpinBoxNbRunSim.get()),verbose=False)
+                decision,chance,limitNbPlayer,raiseFactorBlind,_ = prbAn.decision(cardsAllP,cardsTable,int(self.varSpinBoxNbRunSim.get()),verbose=False)
                 if valPotTotal == 0:
                     valPotTotalTmp = valPot
                 else:
@@ -495,8 +497,9 @@ class AppPokerBot(tk.Frame):
                         if decision[i] in possibleActions:
                             finalDecision = decision[i]
                             index = possibleActions.index(finalDecision)
-                            winMan.typeNumberFromKeyboard(self.valBlind*raiseFactorBlind)
-                            sleep(0.5)
+                            if raiseFactorBlind > 0.0001:
+                                winMan.typeNumberFromKeyboard(self.valBlind*raiseFactorBlind)
+                                sleep(0.5)
                             clickY = locActions[index][0]
                             clickX = locActions[index][1]
                             flagNoActionPossible = False
